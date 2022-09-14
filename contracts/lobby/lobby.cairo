@@ -29,7 +29,7 @@ func constructor {syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
     // give_invitation_occurred.emit (
     //     event_counter,
     //     GYOZA
-    // );
+    // 
 
     return();
 }

@@ -6,7 +6,7 @@ from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.alloc import alloc
 from starkware.starknet.common.syscalls import get_block_number, get_caller_address
 
-from contracts.design.constants import (
+from src.contracts.design.constants import (
     YOANN
     )
 
@@ -35,7 +35,7 @@ func event_counter () -> (val : felt) {
 @event
 func ask_to_queue_occurred (
     event_counter : felt,
-    account : felt,
+    // account : felt,
     queue_idx : felt
 ){
 }
@@ -188,7 +188,8 @@ func anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     //
     let (event_counter) = event_counter_read();
     event_counter_increment();
-    ask_to_queue_occurred.emit(event_counter, caller, new_player_idx);
+    ask_to_queue_occurred.emit(event_counter, new_player_idx);
+    // ask_to_queue_occurred.emit(event_counter, caller, new_player_idx);
 
     return ();
 }
@@ -219,10 +220,10 @@ func reset_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     // Permission
     let (caller) = get_caller_address();
     with_attr error_message("Admin Function: Only Admins can reset the queue") {
-        assert caller = YOANN;
+        assert YOANN = caller;
     }
 
-    let (tail) = queue_tail_index();
+    let (tail) = queue_tail_index.read();
     if (idx == tail) {
         return();
     }
@@ -238,20 +239,20 @@ func reset_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }
 
 
-@external
-func can_dispatch_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    arguments
-) -> (
-) {
+// @external
+// func can_dispatch_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+//     arguments
+// ) -> (
+// ) {
 
-    let (universe_idx) = 
+//     let (universe_idx) = 
 
-    return (universeID);
-}
+//     return (universeID);
+// }
 
-@external
-func dispatch_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    arguments
-) {
+// @external
+// func dispatch_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+//     arguments
+// ) {
     
-}
+// }

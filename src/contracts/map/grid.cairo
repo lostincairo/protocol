@@ -22,7 +22,7 @@ func grid_y_coordinate_for_address(address: felt) -> (y: felt) {
 }
 
 @storage_var
-func grid_address_for_coordinates(cod) -> (address: felt) {
+func grid_address_for_coordinates(x: felt, y: felt) -> (address: felt) {
 }
 
 
@@ -47,6 +47,7 @@ func grid_y_coordinate_for_address_read{syscall_ptr: felt*, pedersen_ptr: HashBu
 @view
 func grid_address_for_coordinates_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     x: felt, y: felt) -> (address: felt) {
+
     let (address) = grid_address_for_coordinates.read(x,y);
 
     return (address,);
@@ -55,26 +56,30 @@ func grid_address_for_coordinates_read{syscall_ptr: felt*, pedersen_ptr: HashBui
 
 // Setters
 //
+// TODO: Test those functions. Not really sure here.
+func grid_x_coordinate_for_address_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    x: felt) -> () {
+    let (caller) = get_caller_address();
+    grid_x_coordinate_for_address.write(x, caller);
 
-// func grid_x_coordinate_for_address_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-//     address: felt) -> (x: felt) {
-//     let (x) = grid_x_coordinate_for_address.write(address);
-
-//     return (x,);
-// }
+    return ();
+}
 
 
-// func grid_y_coordinate_for_address_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-//     address: felt) -> (y: felt) {
-//     let (y) = grid_y_coordinate_for_address.write(address);
+func grid_y_coordinate_for_address_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    y: felt) -> () {
+    let (caller) = get_caller_address();
+    grid_y_coordinate_for_address.write(y, caller);
 
-//     return (y,);
-// }
+    return ();
+}
 
 
 func grid_address_for_coordinates_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    x: felt, y: felt) -> (address: felt) {
-    grid_address_for_coordinates.write(x, y, address);
+    x: felt, y: felt) -> () {
+
+    let (caller) = get_caller_address();
+    grid_address_for_coordinates.write(x, y, caller);
 
     return ();
 }

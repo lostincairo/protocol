@@ -6,7 +6,9 @@ from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.alloc import alloc
 from starkware.starknet.common.syscalls import get_block_number, get_caller_address
 
-
+from contracts.design.constants import (
+    YOANN
+    )
 
 // Storage Vars #################################################################
 
@@ -19,7 +21,7 @@ func queue_tail_index () -> (tail_idx : felt) {
 }
 
 @storage_var
-func queue_address_to_index (address : felt) -> (idx : felt) {
+func address_to_queue_index (address : felt) -> (idx : felt) {
 }
 
 @storage_var
@@ -58,10 +60,10 @@ func queue_tail_index_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range
 }
 
 @view
-func queue_address_to_index_read{
+func address_to_queue_index_read{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(address: felt) -> (idx: felt) {
-    let (idx) = queue_address_to_index.read(address);
+    let (idx) = address_to_queue_index.read(address);
 
     return (idx,);
 }
@@ -104,10 +106,10 @@ func queue_tail_index_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
     return ();
 }
 
-func queue_address_to_index_write{
+func address_to_queue_index_write{
     syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 }(address: felt, idx: felt) -> () {
-    queue_address_to_index.write(address, idx);
+    address_to_queue_index.write(address, idx);
 
     return ();
 }
@@ -168,7 +170,7 @@ func anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     //
     // Revert if caller index-in-queue is not zero, indicating the caller is already in the queue
     //
-    let (caller_idx_in_queue) = queue_address_to_index_read(caller);
+    let (caller_idx_in_queue) = address_to_queue_index_read(caller);
     with_attr error_message("caller index in queue != 0 => caller already in queue.") {
         assert caller_idx_in_queue = 0;
     }
@@ -178,7 +180,7 @@ func anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     let (curr_tail_idx) = queue_tail_index_read();
     let new_player_idx = curr_tail_idx + 1;
     queue_tail_index_write(new_player_idx);
-    queue_address_to_index_write(caller, new_player_idx);
+    address_to_queue_index_write(caller, new_player_idx);
     queue_index_to_address_write(new_player_idx, caller);
 
     //
@@ -189,4 +191,67 @@ func anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     ask_to_queue_occurred.emit(event_counter, caller, new_player_idx);
 
     return ();
+}
+
+@external
+func anyone_pop_from_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+    alloc_locals;
+
+    // Revert if player is not already in the queue, ie. if index-in-queue is not zero.
+    let (caller) = get_caller_address();
+    with_attr error_message("caller is not in the queue") {
+        let (idx) = address_to_queue_index_read(caller);
+        assert_not_zero(idx);
+    }
+
+    // Pop player from queue.
+    address_to_queue_index_write(caller, 0);
+
+    return ();
+}
+
+
+// Reset queue, only callable by YOANN
+@external
+func reset_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr} (idx: felt) -> () {
+    alloc_locals;
+
+    // Permission
+    let (caller) = get_caller_address();
+    with_attr error_message("Admin Function: Only Admins can reset the queue") {
+        assert caller = YOANN;
+    }
+
+    let (tail) = queue_tail_index();
+    if (idx == tail) {
+        return();
+    }
+
+    // reset the storage vars
+    let (player_address) = queue_index_to_address_read(idx);
+    queue_index_to_address_write(idx, 0);
+    address_to_queue_index_write(player_address, 0);
+
+    // recursion
+    reset_queue(idx + 1);
+    return ();
+}
+
+
+@external
+func can_dispatch_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    arguments
+) -> (
+) {
+
+    let (universe_idx) = 
+
+    return (universeID);
+}
+
+@external
+func dispatch_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    arguments
+) {
+    
 }

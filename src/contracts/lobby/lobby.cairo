@@ -193,22 +193,6 @@ func anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     return ();
 }
 
-@external
-func anyone_pop_from_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
-    alloc_locals;
-
-    // Revert if player is not already in the queue, ie. if index-in-queue is not zero.
-    let (caller) = get_caller_address();
-    with_attr error_message("caller is not in the queue") {
-        let (idx) = address_to_queue_index_read(caller);
-        assert_not_zero(idx);
-    }
-
-    // Pop player from queue.
-    address_to_queue_index_write(caller, 0);
-
-    return ();
-}
 
 
 // Reset queue, only callable by YOANN
@@ -254,4 +238,26 @@ func reset_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 //     arguments
 // ) {
     
+// }
+
+
+
+// Not sure if exiting the queue mid-wait for a game to start is a necessary feature for the MVP. 
+// To be implemented at a later stage.
+
+// @external
+// func anyone_pop_from_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+//     alloc_locals;
+
+//     // Revert if player is not already in the queue, ie. if index-in-queue is not zero.
+//     let (caller) = get_caller_address();
+//     with_attr error_message("caller is not in the queue") {
+//         let (idx) = address_to_queue_index_read(caller);
+//         assert_not_zero(idx);
+//     }
+
+//     // Pop player from queue.
+//     address_to_queue_index_write(caller, 0);
+
+//     return ();
 // }

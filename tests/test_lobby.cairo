@@ -11,18 +11,11 @@ from src.contracts.lobby.lobby import (
     anyone_ask_to_queue,
     queue_tail_index_read,
     event_counter_read,
-    queue_index_to_address_read
+    queue_index_to_address_read,
+    address_to_queue_index_read,
+    // anyone_pop_from_queue
 )
 
-// const YOANN = 0x06E7060BE8b0633bb974C682984e646e1f0c634325E91f59d9830858fb4C3180;
-// const CALLER = 0x00Bed5456bfF4DF658E5EC00EDb2CE66E0194dF12f1Cfe3f99f9B279a7230cc6;
-
-// @external
-// func __setup__() {
-//     %{context.address = deploy_contract("./src/contracts/lobby/lobby.cairo").contract_address %}
-
-//     return ();
-// }
 
 @external
 func test_anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
@@ -57,3 +50,40 @@ func test_anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ra
     
     return ();
 }
+
+// Not sure if exiting the queue mid-wait for a game to start is a necessary feature for the MVP. 
+// To be implemented at a later stage.
+
+// @external
+// func test_fail_anyone_pop_from_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+//     alloc_locals;
+
+//     %{ stop_prank_callable = start_prank(123) %}
+
+//     %{ expect_revert(error_message= "caller is not in the queue") %}
+//     anyone_pop_from_queue();
+    
+//     return ();
+// }
+
+// @external
+// func test_anyone_pop_from_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+//     alloc_locals;
+
+//     %{ stop_prank_callable = start_prank(123) %}
+//     let (caller) = get_caller_address();
+
+//     anyone_ask_to_queue();
+
+//     let (prev_tail_idx) = queue_tail_index_read();
+
+//     anyone_pop_from_queue();
+
+//     let(curr_tail_idx) = queue_tail_index_read();
+//     assert curr_tail_idx = prev_tail_idx - 1;
+
+//     let (addr_idx) = address_to_queue_index_read(caller);
+//     assert addr_idx = 0;
+    
+//     return ();
+// }

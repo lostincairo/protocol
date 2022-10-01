@@ -10,6 +10,12 @@ from src.contracts.design.constants import (
     YOANN
     )
 
+from src.contracts.game.game import (
+    game_idx_to_status,
+    game_idx_counter,
+
+)
+
 // Storage Vars #################################################################
 
 @storage_var
@@ -219,6 +225,42 @@ func reset_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     // recursion
     reset_queue(idx + 1);
     return ();
+}
+
+
+@external
+func find_idle_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    idx: felt) -> (has_idle_game: felt, idle_game_idx: felt
+) {
+    let last_game_idx = game_idx_counter.read();
+    if (idx == last_game_idx) {
+        return (0, 0);
+    }
+    
+    let (game_idx) = idx + 1;
+    let (is_idle) = game_idx_to_status(game_idx);
+    if (is_idle == 1768189029) {
+        return (1, game_idx);
+    }
+
+    let (b, i) = find_idle_game(idx + 1);
+    return (b, i);
+
+}
+
+@external
+func can_dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) -> () {
+    
+    // check if at least 2 players are in the queue
+    let (curr_head_idx) = queue_head_index_read();
+    let (curr_tail_idx) = queue_tail_index_read();
+    let (curr_len) = curr_tail_idx - curr_head_idx;
+    let (bool_has_suficient_players_in_queue) = is_le(2, curr_len);
+
+    // check if at least one game is idle
+    let (bool_has_idle_game, idle_game_idx) = find_idle_game(0);
+
 }
 
 

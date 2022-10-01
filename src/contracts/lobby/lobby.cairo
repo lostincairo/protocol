@@ -35,7 +35,7 @@ func event_counter () -> (val : felt) {
 @event
 func ask_to_queue_occurred (
     event_counter : felt,
-    // account : felt,
+    account : felt,
     queue_idx : felt
 ){
 }
@@ -188,8 +188,7 @@ func anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     //
     let (event_counter) = event_counter_read();
     event_counter_increment();
-    ask_to_queue_occurred.emit(event_counter, new_player_idx);
-    // ask_to_queue_occurred.emit(event_counter, caller, new_player_idx);
+    ask_to_queue_occurred.emit(event_counter, caller, new_player_idx);
 
     return ();
 }

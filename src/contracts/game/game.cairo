@@ -13,6 +13,10 @@ from src.contracts.game.grid import (
     grid_address_for_coordinates_write
 )
 
+from src.contracts.lobby.lobby import (
+    assert_caller_is_lobby,
+)
+
 @storage_var
 func game_idx_counter() -> (game_idx: felt) {
 }
@@ -22,6 +26,12 @@ func game_idx_counter() -> (game_idx: felt) {
 @storage_var
 func game_idx_to_status(game_idx: felt) -> (game_status: felt) {
 }
+
+// Store block height for each game idx at game activation
+@storage_var
+func block_height_at_game_activation(game_idx: felt) -> (block_height: felt) {
+}
+
 
 // Will be picked up by the indexer
 @event
@@ -33,6 +43,15 @@ func init_game_occured(
 
 // Getters
 @view
+func block_height_at_game_activation_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    game_idx: felt) -> (block_height: felt) {
+
+    let block_height = block_height_at_game_activation.read(game_idx);
+    return(block_height);
+}
+
+
+@view
 func game_idx_to_status_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     game_idx: felt) -> (game_status: felt) {
 
@@ -40,7 +59,15 @@ func game_idx_to_status_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, r
     return (game_status);   
 }
 
+
 // Setters
+func block_height_at_game_activation_write{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    game_idx: felt, block_height: felt) -> () {
+
+    block_height_at_game_activation.write(block_height);
+    return();
+}
+
 func game_idx_to_status_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     game_idx: felt, game_status: felt) -> () {
     
@@ -78,4 +105,29 @@ func init_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     init_game_occured.emit(game_idx);
 
     return ();
+}
+
+
+@external
+func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    game_idx: felt, arr_player_adresses_len: felt, arr_player_adresses: felt*) -> () {
+    
+    // Assert that lobby is calling the function
+    assert_caller_is_lobby();
+
+    // Assert that 2 players are dispatched to the game
+    assert arr_player_adresses_len = PLAYERS_PER_GAME;
+
+    // TODO: Give players health, movement and attacks
+
+
+    // Record L2 block at activation
+    let block = get_block_number();
+    block_height_at_game_activation_write(game_idx, block);
+
+    // Event emission
+
+
+    return();
+
 }

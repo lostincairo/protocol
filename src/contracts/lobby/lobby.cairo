@@ -14,10 +14,14 @@ from src.contracts.design.constants import (
 from src.contracts.game.game import (
     game_idx_to_status,
     game_idx_counter,
-
+    activate_game,
 )
 
 // Storage Vars #################################################################
+
+@storage_var
+func lobby_address () -> (address: felt) {
+}
 
 @storage_var
 func queue_head_index () -> (head_idx : felt) {
@@ -50,6 +54,15 @@ func ask_to_queue_occurred (
 //
 // Getters
 //
+@view
+func lobby_address_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) -> (address: felt) {
+    let (lobby_address) = lobby_address.read();
+
+    return (lobby_address,);
+}
+
+
 @view
 func queue_head_index_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     ) -> (head_idx: felt) {
@@ -97,6 +110,13 @@ func event_counter_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_ch
 //
 // Setters
 //
+func lobby_address_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) -> (address: felt) {
+    let (lobby_address) = lobby_address.write();
+
+    return (lobby_address,);
+}
+
 func queue_head_index_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     head_idx: felt
 ) -> () {
@@ -282,18 +302,21 @@ func dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     alloc_locals;
 
 
-    // Fails if cannot dispatch players to the game
+    // Retrieve variables
     let (
         curr_head_idx,
         curr_tail_idx,
         idle_game_idx,
         bool
     ) = can_dispatch_player_to_game();
-
+    
+    // Fails if cannot dispatch players to the game
     with_attr error_message("Dispatch failed: Not enough players in the queue or no idle game available"){
         assert bool = 1;
     }
     
+
+    // TODO: Check this par to retrieve players addresses array
     let (arr_player_addresses: felt*) = alloc();
     populate_player_adr_update_queue(
         arr_player_addresses,
@@ -305,9 +328,12 @@ func dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     queue_index_to_address_write(curr_head_idx + PLAYERS_PER_GAME);
 
 
-    let (game_address) = game_addresses_read
+    // Set game status to active (felt: 107079782725221)
+    game_idx_to_status_write(idle_game_idx, 107079782725221)
 
-    // Set game status to active
+
+    // Dispatch to game
+    activate_game(idle_game_idx, 
 
 }
 
@@ -341,6 +367,33 @@ func populate_player_adr_update_queue{syscall_ptr: felt*, pedersen_ptr: HashBuil
     return();
 }
 
+
+@external
+func assert_caller_is_lobby{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> () {
+    
+    let (caller) = get_caller_address();
+    let (lobby_address) = lobby_address_read();
+    with_attr error_message ("Caller is not the lobby contract"){
+        assert caller = lobby_address;
+    }
+
+    return();
+}
+
+
+@external
+func set_lobby_address{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    address) -> () {
+    
+    let (curr_lobby_address) = lobby_address_read();
+    with_attr error_message ("Lobby Address already set") {
+        assert curr_lobby_address = 0;
+    }
+
+    lobby_address_write(address);
+
+    return();
+}
 
 // @external
 // func can_dispatch_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(

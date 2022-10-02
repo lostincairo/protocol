@@ -8,6 +8,7 @@ from starkware.starknet.common.syscalls import get_block_number, get_caller_addr
 
 from src.contracts.design.constants import (
     YOANN
+    PLAYERS_PER_GAME
     )
 
 from src.contracts.game.game import (
@@ -250,7 +251,12 @@ func find_idle_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 
 @external
 func can_dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    ) -> () {
+    ) -> (
+        curr_head_idx : felt,
+        curr_tail_idx : felt,
+        idle_game_idx : felt,
+        bool : felt
+    ) {
     
     // check if at least 2 players are in the queue
     let (curr_head_idx) = queue_head_index_read();
@@ -261,6 +267,78 @@ func can_dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*,
     // check if at least one game is idle
     let (bool_has_idle_game, idle_game_idx) = find_idle_game(0);
 
+
+    // Combine the 2 above conditions
+    let bool = bool_has_idle_game * bool_has_suficient_players_in_queue;
+
+    return (curr_head_idx, curr_tail_idx, idle_game_idx, bool);
+}
+
+
+@external
+func dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    arguments
+) {
+    alloc_locals;
+
+
+    // Fails if cannot dispatch players to the game
+    let (
+        curr_head_idx,
+        curr_tail_idx,
+        idle_game_idx,
+        bool
+    ) = can_dispatch_player_to_game();
+
+    with_attr error_message("Dispatch failed: Not enough players in the queue or no idle game available"){
+        assert bool = 1;
+    }
+    
+    let (arr_player_addresses: felt*) = alloc();
+    populate_player_adr_update_queue(
+        arr_player_addresses,
+        curr_head_idx,
+        0
+    )
+
+    // Update queue head index
+    queue_index_to_address_write(curr_head_idx + PLAYERS_PER_GAME);
+
+
+    let (game_address) = game_addresses_read
+
+    // Set game status to active
+
+}
+
+
+func populate_player_adr_update_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    arr_player_addresses: felt*,
+    curr_head_idx: felt,
+    offset: felt
+    ) -> () {
+    alloc_locals;
+
+    if offset == PLAYERS_PER_GAME {
+        return();
+    }
+
+    // populate arr_player_addresses
+    let (player_address) = queue_index_to_address_read(curr_head_idx + offset + 1);
+    assert arr_player_addresses [offset] = player_adr;
+
+    // Clear queue storage at idx
+    address_to_queue_index_write(player_address, 0);
+    queue_index_to_address_write(curr_head_idx + offset + 1, 0);
+
+    // Recursion
+    populate_player_adr_update_queue(
+        arr_player_addresses,
+        curr_head_idx,
+        offset + 1
+    )
+
+    return();
 }
 
 

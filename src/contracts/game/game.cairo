@@ -106,6 +106,21 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
 }
 
 
+
+@external
+func set_lobby_address{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    address) -> () {
+    
+    let (curr_lobby_address) = lobby_address_read();
+    with_attr error_message ("Lobby Address already set") {
+        assert curr_lobby_address = 0;
+    }
+
+    lobby_address_write(address);
+
+    return();
+}
+
 @external
 func assert_caller_is_lobby{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> () {
     

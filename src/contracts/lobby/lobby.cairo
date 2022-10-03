@@ -11,6 +11,10 @@ from src.contracts.design.constants import (
     PLAYERS_PER_GAME
     )
 
+from src.contracts.lobby.lobby_state import (
+    lobby_state_functions
+)
+
 from src.contracts.game.game import (
     game_idx_to_status,
     game_idx_counter,
@@ -18,103 +22,11 @@ from src.contracts.game.game import (
     activate_game_occured
 )
 
-// Storage Vars #################################################################
 
-
-
-@storage_var
-func queue_head_index () -> (head_idx : felt) {
+@contract_interface
+namespace IGameContract {
+    func activate_game(arr_player_adresses_len: felt, arr_player_adresses: felt*)
 }
-
-@storage_var
-func queue_tail_index () -> (tail_idx : felt) {
-}
-
-@storage_var
-func address_to_queue_index (address : felt) -> (idx : felt) {
-}
-
-@storage_var
-func queue_index_to_address (idx : felt) -> (address : felt) {
-}
-
-
-
-
-//
-// Getters
-//
-@view
-func queue_head_index_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    ) -> (head_idx: felt) {
-    let (head_idx) = queue_head_index.read();
-
-    return (head_idx,);
-}
-
-@view
-func queue_tail_index_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    ) -> (tail_idx: felt) {
-    let (tail_idx) = queue_tail_index.read();
-
-    return (tail_idx,);
-}
-
-@view
-func address_to_queue_index_read{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(address: felt) -> (idx: felt) {
-    let (idx) = address_to_queue_index.read(address);
-
-    return (idx,);
-}
-
-@view
-func queue_index_to_address_read{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(idx: felt) -> (address: felt) {
-    let (address) = queue_index_to_address.read(idx);
-
-    return (address,);
-}
-
-
-//
-// Setters
-//
-func queue_head_index_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    head_idx: felt
-) -> () {
-    queue_head_index.write(head_idx);
-
-    return ();
-}
-
-func queue_tail_index_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    tail_idx: felt
-) -> () {
-    queue_tail_index.write(tail_idx);
-
-    return ();
-}
-
-func address_to_queue_index_write{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(address: felt, idx: felt) -> () {
-    address_to_queue_index.write(address, idx);
-
-    return ();
-}
-
-func queue_index_to_address_write{
-    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-}(idx: felt, address: felt) -> () {
-    queue_index_to_address.write(idx, address);
-
-    return ();
-}
-
-
 
 
 
@@ -246,9 +158,7 @@ func can_dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*,
 
 
 @external
-func dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    arguments
-) {
+func dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> () {
     alloc_locals;
 
 
@@ -333,19 +243,6 @@ func populate_player_adr_update_queue{syscall_ptr: felt*, pedersen_ptr: HashBuil
 
 
 
-@external
-func set_lobby_address{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    address) -> () {
-    
-    let (curr_lobby_address) = lobby_address_read();
-    with_attr error_message ("Lobby Address already set") {
-        assert curr_lobby_address = 0;
-    }
-
-    lobby_address_write(address);
-
-    return();
-}
 
 // @external
 // func can_dispatch_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(

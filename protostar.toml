@@ -8,3 +8,8 @@ libs_path = "lib"
 lobby = [
     "src/contracts/lobby/lobby.cairo",
 ]
+game = [
+    "src/contracts/game/game.cairo",
+]
+
+

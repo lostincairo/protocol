@@ -33,6 +33,11 @@ func game_address_to_index(address: felt) -> (idx: felt) {
 }
 
 @storage_var
+func game_contract_address() -> (address: felt) {
+}
+
+
+@storage_var
 func event_counter () -> (val : felt) {
 }
 
@@ -67,11 +72,10 @@ namespace lobby_state_functions {
     }
 
     @view
-    func queue_index_to_address_read{
-        syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-    }(idx: felt) -> (address: felt) {
-        let (address) = queue_index_to_address.read(idx);
+    func queue_index_to_address_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr} (
+        idx: felt) -> (address: felt) {
 
+        let (address) = queue_index_to_address.read(idx);
         return (address,);
     }
 
@@ -79,8 +83,16 @@ namespace lobby_state_functions {
     func game_addresses_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         idx: felt) -> (address: felt) {
         
-        let (address) = game_addresses_read(idx);
-        return (address);
+        let (address) = game_addresses.read(idx);
+        return (address,);
+    }
+
+        @view
+    func game_contract_address_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        ) -> (address: felt) {
+        
+        let (address) = game_contract_address.read();
+        return (address,);
     }
 
     @view
@@ -88,7 +100,7 @@ namespace lobby_state_functions {
         address: felt) -> (idx: felt) {
         
         let (idx) = game_addresses_read(address);
-        return (idx);
+        return (idx,);
     }
 
     @view
@@ -126,9 +138,18 @@ namespace lobby_state_functions {
         return ();
     }
 
-    func queue_index_to_address_write{
+    func game_contract_address_write{
         syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-    }(idx: felt, address: felt) -> () {
+    }(address: felt) -> () {
+        game_contract_address.write(address);
+
+        return ();
+    }
+
+    func queue_index_to_address_write{
+        syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr} (
+        idx: felt, address: felt) -> () {
+        
         queue_index_to_address.write(idx, address);
 
         return ();
@@ -139,9 +160,9 @@ namespace lobby_state_functions {
 
     // Check that caller is an authorized contract address
     // TODO: Change lobby to include all authorized contract addresses
-    let (caller) = get_caller_address();
-    let (lobby) = get_caller_address();
-    assert caller = lobby;
+    // let (caller) = get_caller_address();
+    // let (lobby) = get_caller_address();
+    // assert caller = lobby;
 
     let (val) = event_counter.read();
     event_counter.write(val + 1);

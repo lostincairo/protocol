@@ -70,7 +70,7 @@ func constructor {syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
 // NOTE: queue idx starts from 1; 0 is reserved for uninitialized (not in queue)
 //
 @external
-func anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+func anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> () {
     alloc_locals;
 
     //
@@ -93,18 +93,18 @@ func anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     // Enqueue
     //
     let (curr_tail_idx) = lobby_state_functions.queue_tail_index_read();
-    let new_player_idx = curr_tail_idx + 1;
-    lobby_state_functions.queue_tail_index_write(new_player_idx);
-    lobby_state_functions.address_to_queue_index_write(caller, new_player_idx);
-    lobby_state_functions.queue_index_to_address_write(new_player_idx, caller);
+    lobby_state_functions.queue_tail_index_write(curr_tail_idx + 1);
+    lobby_state_functions.address_to_queue_index_write(caller, curr_tail_idx + 1);
+    lobby_state_functions.queue_index_to_address_write(curr_tail_idx + 1, caller);
 
     //
     // Event emission
     //
     let (event_counter) = lobby_state_functions.event_counter_read();
     lobby_state_functions.event_counter_increment();
-    AskToQueueOccured.emit(event_counter, caller, new_player_idx);
+    AskToQueueOccured.emit(event_counter, caller, curr_tail_idx + 1);
 
+    return();
 
 }
 
@@ -136,6 +136,14 @@ func reset_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     return ();
 }
 
+@external
+func set_game_contract_address{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    address: felt) -> (){
+
+    lobby_state_functions.game_contract_address_write(address);    
+    return();
+}
+
 
 @external
 func find_idle_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -146,11 +154,11 @@ func find_idle_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
         return (0, 0);
     }
     
+    let (game_contract_address) = lobby_state_functions.game_contract_address_read();
     // read game status from game_idx and check that it is idle
-    let (game_idx) = idx + 1;
-    let (is_idle) = IGameContract.game_idx_to_status_read(game_idx);
+    let (is_idle) = IGameContract.game_idx_to_status_read(game_contract_address, idx + 1);
     if (is_idle == 1768189029) {
-        return (1, game_idx);
+        return (1, idx + 1);
     }
 
     // recursion
@@ -171,12 +179,13 @@ func can_dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*,
         idle_game_idx : felt,
         bool : felt
     ) {
-    
+    alloc_locals;
+
     // check if at least 2 players are in the queue
     let (curr_head_idx) = lobby_state_functions.queue_head_index_read();
     let (curr_tail_idx) = lobby_state_functions.queue_tail_index_read();
-    let (curr_len) = curr_tail_idx - curr_head_idx;
-    let (bool_has_suficient_players_in_queue) = is_le(PLAYERS_PER_GAME, curr_len);
+    let curr_len = curr_tail_idx - curr_head_idx;
+    let bool_has_suficient_players_in_queue = is_le (PLAYERS_PER_GAME, curr_len);
 
     // check if at least one game is idle
     let (bool_has_idle_game, idle_game_idx) = find_idle_game(0);
@@ -254,13 +263,14 @@ func dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     let (game_address) = lobby_state_functions.game_addresses_read(idle_game_idx); 
 
     // Set game status to active (felt: 107079782725221)
-    IGameContract.game_idx_to_status_write(idle_game_idx, 107079782725221);
+    let (game_contract_address) = lobby_state_functions.game_contract_address_read();
+    IGameContract.game_idx_to_status_write(game_contract_address, idle_game_idx, 107079782725221);
 
 
     // Dispatch to game
     IGameContract.activate_game(
-    idle_game_idx,
-    arr_player_adresses_len = PLAYERS_PER_GAME,
+    game_contract_address,
+    PLAYERS_PER_GAME,
     arr_player_addresses
     );
 

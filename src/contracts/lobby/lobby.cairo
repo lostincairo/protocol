@@ -140,6 +140,8 @@ func reset_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 func set_game_contract_address{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     address: felt) -> (){
 
+    // TODO: Make this function callable only once
+
     lobby_state_functions.game_contract_address_write(address);    
     return();
 }

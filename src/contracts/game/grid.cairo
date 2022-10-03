@@ -85,16 +85,6 @@ func grid_address_for_coordinates_write{syscall_ptr: felt*, pedersen_ptr: HashBu
 }
 
 
-
-// Constructor (WIP) - Must pop
-@constructor
-func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    arguments
-) {
-
-    return();
-}
-
 @external
 func initial_position_on_game_start{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     x: felt, y: felt) -> () {

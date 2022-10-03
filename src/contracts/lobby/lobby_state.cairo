@@ -25,6 +25,14 @@ func queue_index_to_address (idx : felt) -> (address : felt) {
 }
 
 @storage_var
+func game_addresses(idx: felt) -> (address: felt) {
+}
+
+@storage_var
+func game_address_to_index(address: felt) -> (idx: felt) {
+}
+
+@storage_var
 func event_counter () -> (val : felt) {
 }
 
@@ -65,6 +73,22 @@ namespace lobby_state_functions {
         let (address) = queue_index_to_address.read(idx);
 
         return (address,);
+    }
+
+    @view
+    func game_addresses_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        idx: felt) -> (address: felt) {
+        
+        let (address) = game_addresses_read(idx);
+        return (address);
+    }
+
+    @view
+    func game_address_to_index_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+        address: felt) -> (idx: felt) {
+        
+        let (idx) = game_addresses_read(address);
+        return (idx);
     }
 
     @view

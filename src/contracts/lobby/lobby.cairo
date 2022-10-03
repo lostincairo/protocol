@@ -8,27 +8,32 @@ from starkware.starknet.common.syscalls import get_block_number, get_caller_addr
 
 from src.contracts.design.constants import (
     YOANN,
-    PLAYERS_PER_GAME
+    PLAYERS_PER_GAME,
+    MAX_CONCURRENT_GAMES
     )
 
 from src.contracts.lobby.lobby_state import (
     lobby_state_functions
 )
 
-// from src.contracts.game.game import (
-//     game_idx_to_status,
-//     game_idx_counter,
-//     activate_game,
-//     activate_game_occured
-// )
-
+// Events
 
 @event
-func ask_to_queue_occurred (
+func AskToQueueOccured (
     event_counter : felt,
     account : felt,
     queue_idx : felt
-){
+    ){
+}
+
+@event
+func GameActivationOccured (
+    event_counter: felt,
+    game_idx: felt,
+    game_address: felt,
+    arr_player_addresses_len: felt,
+    arr_player_addresses: felt*
+    ) {
 }
 
 
@@ -36,11 +41,13 @@ func ask_to_queue_occurred (
 
 @contract_interface
 namespace IGameContract {
-    func init_game(game_idx_to_status) -> () {
-    }
     func activate_game(arr_player_adresses_len: felt, arr_player_adresses: felt*) -> () {
     }
-    func set_lobby_address(address) -> () {
+
+    func game_idx_to_status_read(game_idx: felt) -> (game_status: felt) {
+    }
+
+    func game_idx_to_status_write(game_idx: felt, game_status: felt) -> () {
     }
 }
 
@@ -81,6 +88,7 @@ func anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     with_attr error_message("caller index in queue != 0 => caller already in queue.") {
         assert caller_idx_in_queue = 0;
     }
+
     //
     // Enqueue
     //
@@ -95,9 +103,9 @@ func anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     //
     let (event_counter) = lobby_state_functions.event_counter_read();
     lobby_state_functions.event_counter_increment();
-    ask_to_queue_occurred.emit(event_counter, caller, new_player_idx);
+    AskToQueueOccured.emit(event_counter, caller, new_player_idx);
 
-    return ();
+
 }
 
 
@@ -134,22 +142,27 @@ func find_idle_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     idx: felt) -> (has_idle_game: felt, idle_game_idx: felt
 ) {
 
-    // TODO: Use different counter
-    let last_game_idx = game_idx_counter.read();
-    if (idx == last_game_idx) {
+    // return 0 if no idle games available
+    if (idx == MAX_CONCURRENT_GAMES) {
         return (0, 0);
     }
     
+    // read game status from game_idx and check that it is idle
     let (game_idx) = idx + 1;
-    let (is_idle) = game_idx_to_status(game_idx);
+    let (is_idle) = IGameContract.game_idx_to_status_read(game_idx);
     if (is_idle == 1768189029) {
         return (1, game_idx);
     }
 
+    // recursion
     let (b, i) = find_idle_game(idx + 1);
     return (b, i);
 
 }
+
+
+
+
 
 @external
 func can_dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -208,21 +221,28 @@ func dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     lobby_state_functions.queue_index_to_address_write(curr_head_idx + PLAYERS_PER_GAME);
 
 
+    // Get Game Address from idx
+    let (game_address) = lobby_state_functions.game_addresses_read(idle_game_idx); 
+
     // Set game status to active (felt: 107079782725221)
-    // TODO:
-    game_idx_to_status_write(idle_game_idx, 107079782725221);
+    IGameContract.game_idx_to_status_write(idle_game_idx, 107079782725221);
 
 
     // Dispatch to game
-    IGameContract.activate_game(idle_game_idx, arr_player_adresses_len = PLAYERS_PER_GAME, arr_player_addresses);
+    IGameContract.activate_game(
+    game_address,
+    arr_player_adresses_len = PLAYERS_PER_GAME,
+    arr_player_addresses
+    );
 
     // Event Emission
     // TODO: 
     let (event_counter) = lobby_state_functions.event_counter_read();
-    event_counter_increment();
-    activate_game_occured.emit(
+    lobby_state_functions.event_counter_increment();
+    GameActivationOccured.emit(
         event_counter,
-        game_idx,
+        idle_game_idx,
+        game_address,
         PLAYERS_PER_GAME,
         arr_player_addresses
     );
@@ -245,7 +265,7 @@ func populate_player_adr_update_queue{syscall_ptr: felt*, pedersen_ptr: HashBuil
 
     // populate arr_player_addresses
     let (player_address) = lobby_state_functions.queue_index_to_address_read(curr_head_idx + offset + 1);
-    assert arr_player_addresses [offset] = player_adr;
+    assert arr_player_addresses [offset] = player_address;
 
     // Clear queue storage at idx
     lobby_state_functions.address_to_queue_index_write(player_address, 0);

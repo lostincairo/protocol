@@ -13,3 +13,4 @@ const MAX_DIST_PER_TICK = 3;
 // Game
 
 const PLAYERS_PER_GAME = 2; 
+const MAX_CONCURRENT_GAMES = 50;

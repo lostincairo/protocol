@@ -13,6 +13,11 @@ from src.contracts.game.grid import (
     grid_address_for_coordinates_write
 )
 
+from src.contracts.design.constants import (
+    PLAYERS_PER_GAME,
+)
+
+// Storage
 
 @storage_var
 func lobby_address () -> (address: felt) {
@@ -33,6 +38,9 @@ func game_idx_to_status(game_idx: felt) -> (game_status: felt) {
 func block_height_at_game_activation(game_idx: felt) -> (block_height: felt) {
 }
 
+
+
+// Events 
 
 // Will be picked up by the indexer
 @event
@@ -96,8 +104,7 @@ func game_idx_to_status_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ra
 
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    arguments
-) {
+    ) {
     
     return ();
 }

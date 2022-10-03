@@ -55,9 +55,18 @@ func activate_game_occured(game_idx_counter: felt) {
 @view
 func lobby_address_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     ) -> (address: felt) {
-    let (lobby_address) = lobby_address.read();
 
-    return (lobby_address,);
+    let (lobby_addr) = lobby_address.read();
+
+    return (lobby_addr,);
+}
+
+@view
+func game_idx_counter_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+) -> (game_idx: felt) {
+    let (idx) = game_idx_counter.read();
+
+    return(idx,);
 }
 
 @view
@@ -74,22 +83,23 @@ func game_idx_to_status_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, r
     game_idx: felt) -> (game_status: felt) {
 
     let(game_status) = game_idx_to_status.read(game_idx);
-    return (game_status);   
+    return (game_status,);   
 }
 
 
 // Setters
 func lobby_address_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    ) -> (address: felt) {
-    let (lobby_address) = lobby_address.write();
+    address: felt) -> () {
+    
+    lobby_address.write(address);
 
-    return (lobby_address,);
+    return ();
 }
 
 func block_height_at_game_activation_write{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     game_idx: felt, block_height: felt) -> () {
 
-    block_height_at_game_activation.write(block_height);
+    block_height_at_game_activation.write(game_idx, block_height);
     return();
 }
 
@@ -125,7 +135,7 @@ func set_lobby_address{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_che
     return();
 }
 
-@external
+
 func assert_caller_is_lobby{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> () {
     
     let (caller) = get_caller_address();
@@ -141,20 +151,23 @@ func assert_caller_is_lobby{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 // This function should be automated using yagi so that there are at least x idle games available.
 // x depending on the number of games played in the last few blocks or the number of players who have joined the queue. 
 @external
-func init_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (game_idx: felt ) {
+func init_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (new_game_idx: felt ) {
 
     // Read current game index
-    let (game_idx) = game_idx_counter.read() + 1;
+    let (game_idx) = game_idx_counter_read();
+
     // Increment counter
-    game_idx_counter.write(game_idx);
+    game_idx_counter.write(game_idx + 1);
 
     // Set game status to idle (to felt: 1768189029)
-    game_idx_to_status_write(game_idx, 1768189029);
+    game_idx_to_status_write(game_idx + 1, 1768189029);
 
     // fires a new event
-    init_game_occured.emit(game_idx);
+    init_game_occured.emit(game_idx + 1);
 
-    return ();
+    let new_game_idx = game_idx + 1;
+
+    return (new_game_idx,);
 }
 
 
@@ -172,7 +185,8 @@ func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 
 
     // Record L2 block at activation
-    let block = get_block_number();
+
+    let (block) = get_block_number();
     block_height_at_game_activation_write(game_idx, block);
 
     // Event emission

@@ -139,8 +139,7 @@ func reset_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 
 @external
 func find_idle_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    idx: felt) -> (has_idle_game: felt, idle_game_idx: felt
-) {
+    idx: felt) -> (has_idle_game: felt, idle_game_idx: felt) {
 
     // return 0 if no idle games available
     if (idx == MAX_CONCURRENT_GAMES) {
@@ -177,7 +176,7 @@ func can_dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*,
     let (curr_head_idx) = lobby_state_functions.queue_head_index_read();
     let (curr_tail_idx) = lobby_state_functions.queue_tail_index_read();
     let (curr_len) = curr_tail_idx - curr_head_idx;
-    let (bool_has_suficient_players_in_queue) = is_le(2, curr_len);
+    let (bool_has_suficient_players_in_queue) = is_le(PLAYERS_PER_GAME, curr_len);
 
     // check if at least one game is idle
     let (bool_has_idle_game, idle_game_idx) = find_idle_game(0);
@@ -187,68 +186,6 @@ func can_dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*,
     let bool = bool_has_idle_game * bool_has_suficient_players_in_queue;
 
     return (curr_head_idx, curr_tail_idx, idle_game_idx, bool);
-}
-
-
-@external
-func dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> () {
-    alloc_locals;
-
-
-    // Retrieve variables
-    let (
-        curr_head_idx,
-        curr_tail_idx,
-        idle_game_idx,
-        bool
-    ) = can_dispatch_player_to_game();
-    
-    // Fails if cannot dispatch players to the game
-    with_attr error_message("Dispatch failed: Not enough players in the queue or no idle game available"){
-        assert bool = 1;
-    }
-    
-
-    // Populate player addresses array
-    let (arr_player_addresses: felt*) = alloc();
-    populate_player_adr_update_queue(
-        arr_player_addresses,
-        curr_head_idx,
-        0
-    );
-
-    // Update queue head index
-    lobby_state_functions.queue_index_to_address_write(curr_head_idx + PLAYERS_PER_GAME);
-
-
-    // Get Game Address from idx
-    let (game_address) = lobby_state_functions.game_addresses_read(idle_game_idx); 
-
-    // Set game status to active (felt: 107079782725221)
-    IGameContract.game_idx_to_status_write(idle_game_idx, 107079782725221);
-
-
-    // Dispatch to game
-    IGameContract.activate_game(
-    game_address,
-    arr_player_adresses_len = PLAYERS_PER_GAME,
-    arr_player_addresses
-    );
-
-    // Event Emission
-    // TODO: 
-    let (event_counter) = lobby_state_functions.event_counter_read();
-    lobby_state_functions.event_counter_increment();
-    GameActivationOccured.emit(
-        event_counter,
-        idle_game_idx,
-        game_address,
-        PLAYERS_PER_GAME,
-        arr_player_addresses
-    );
-
-    return();
-
 }
 
 
@@ -280,3 +217,66 @@ func populate_player_adr_update_queue{syscall_ptr: felt*, pedersen_ptr: HashBuil
 
     return();
 }
+
+
+@external
+func dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> () {
+    alloc_locals;
+
+
+    // Check if can dipatch player to game
+    let (
+        curr_head_idx,
+        curr_tail_idx,
+        idle_game_idx,
+        bool
+    ) = can_dispatch_player_to_game();
+    
+    // Fails if cannot dispatch players to the game
+    with_attr error_message("Dispatch failed: Not enough players in the queue or no idle game available"){
+        assert bool = 1;
+    }
+    
+
+    // Populate player addresses array
+    let (arr_player_addresses: felt*) = alloc();
+    populate_player_adr_update_queue(
+        arr_player_addresses,
+        curr_head_idx,
+        0
+    );
+
+    // Update queue head index
+    lobby_state_functions.queue_head_index_write(curr_head_idx + PLAYERS_PER_GAME);
+
+
+    // Get Game Address from idx
+    let (game_address) = lobby_state_functions.game_addresses_read(idle_game_idx); 
+
+    // Set game status to active (felt: 107079782725221)
+    IGameContract.game_idx_to_status_write(idle_game_idx, 107079782725221);
+
+
+    // Dispatch to game
+    IGameContract.activate_game(
+    idle_game_idx,
+    arr_player_adresses_len = PLAYERS_PER_GAME,
+    arr_player_addresses
+    );
+
+    // Event Emission
+    let (event_counter) = lobby_state_functions.event_counter_read();
+    lobby_state_functions.event_counter_increment();
+    GameActivationOccured.emit(
+        event_counter,
+        idle_game_idx,
+        game_address,
+        PLAYERS_PER_GAME,
+        arr_player_addresses
+    );
+
+    return();
+
+}
+
+

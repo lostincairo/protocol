@@ -13,9 +13,13 @@ from src.contracts.game.grid import (
     grid_address_for_coordinates_write
 )
 
-from src.contracts.lobby.lobby import (
-    assert_caller_is_lobby,
+from src.contracts.design.events import (
+    event_counter
 )
+
+@storage_var
+func lobby_address () -> (address: felt) {
+}
 
 @storage_var
 func game_idx_counter() -> (game_idx: felt) {
@@ -35,13 +39,22 @@ func block_height_at_game_activation(game_idx: felt) -> (block_height: felt) {
 
 // Will be picked up by the indexer
 @event
-func init_game_occured(
-    game_idx_counter: felt
-){
+func init_game_occured(game_idx_counter: felt){
 }
 
+@event
+func activate_game_occured(game_idx_counter: felt) {
+}
 
 // Getters
+@view
+func lobby_address_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) -> (address: felt) {
+    let (lobby_address) = lobby_address.read();
+
+    return (lobby_address,);
+}
+
 @view
 func block_height_at_game_activation_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     game_idx: felt) -> (block_height: felt) {
@@ -61,6 +74,13 @@ func game_idx_to_status_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, r
 
 
 // Setters
+func lobby_address_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) -> (address: felt) {
+    let (lobby_address) = lobby_address.write();
+
+    return (lobby_address,);
+}
+
 func block_height_at_game_activation_write{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     game_idx: felt, block_height: felt) -> () {
 
@@ -85,6 +105,18 @@ func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_p
     return ();
 }
 
+
+@external
+func assert_caller_is_lobby{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> () {
+    
+    let (caller) = get_caller_address();
+    let (lobby_address) = lobby_address_read();
+    with_attr error_message ("Caller is not the lobby contract"){
+        assert caller = lobby_address;
+    }
+
+    return();
+}
 
 // Increment game id and set game status to idle. 
 // This function should be automated using yagi so that there are at least x idle games available.

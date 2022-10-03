@@ -7,7 +7,7 @@ from starkware.cairo.common.alloc import alloc
 from starkware.starknet.common.syscalls import get_block_number, get_caller_address
 
 from src.contracts.design.constants import (
-    YOANN
+    YOANN,
     PLAYERS_PER_GAME
     )
 
@@ -15,13 +15,12 @@ from src.contracts.game.game import (
     game_idx_to_status,
     game_idx_counter,
     activate_game,
+    activate_game_occured
 )
 
 // Storage Vars #################################################################
 
-@storage_var
-func lobby_address () -> (address: felt) {
-}
+
 
 @storage_var
 func queue_head_index () -> (head_idx : felt) {
@@ -39,30 +38,12 @@ func address_to_queue_index (address : felt) -> (idx : felt) {
 func queue_index_to_address (idx : felt) -> (address : felt) {
 }
 
-@storage_var
-func event_counter () -> (val : felt) {
-}
 
-@event
-func ask_to_queue_occurred (
-    event_counter : felt,
-    account : felt,
-    queue_idx : felt
-){
-}
+
 
 //
 // Getters
 //
-@view
-func lobby_address_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    ) -> (address: felt) {
-    let (lobby_address) = lobby_address.read();
-
-    return (lobby_address,);
-}
-
-
 @view
 func queue_head_index_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     ) -> (head_idx: felt) {
@@ -97,26 +78,10 @@ func queue_index_to_address_read{
     return (address,);
 }
 
-@view
-func event_counter_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    val: felt
-) {
-    let (val) = event_counter.read();
-
-    return (val,);
-}
-
 
 //
 // Setters
 //
-func lobby_address_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    ) -> (address: felt) {
-    let (lobby_address) = lobby_address.write();
-
-    return (lobby_address,);
-}
-
 func queue_head_index_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     head_idx: felt
 ) -> () {
@@ -149,19 +114,6 @@ func queue_index_to_address_write{
     return ();
 }
 
-func event_counter_reset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
-    ) {
-    event_counter.write(0);
-
-    return ();
-}
-func event_counter_increment{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    ) -> () {
-    let (val) = event_counter.read();
-    event_counter.write(val + 1);
-
-    return ();
-}
 
 
 
@@ -172,8 +124,6 @@ func constructor {syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
     //
     // Permission check to be implemented later
 
-    let (event_counter) = event_counter_read ();
-    event_counter_increment ();
 
     return();
 }
@@ -316,24 +266,36 @@ func dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     }
     
 
-    // TODO: Check this par to retrieve players addresses array
+    // Populate player addresses array
     let (arr_player_addresses: felt*) = alloc();
     populate_player_adr_update_queue(
         arr_player_addresses,
         curr_head_idx,
         0
-    )
+    );
 
     // Update queue head index
     queue_index_to_address_write(curr_head_idx + PLAYERS_PER_GAME);
 
 
     // Set game status to active (felt: 107079782725221)
-    game_idx_to_status_write(idle_game_idx, 107079782725221)
+    game_idx_to_status_write(idle_game_idx, 107079782725221);
 
 
     // Dispatch to game
-    activate_game(idle_game_idx, 
+    activate_game(idle_game_idx, arr_player_adresses_len = PLAYERS_PER_GAME, arr_player_addresses);
+
+    // Event Emission
+    let (event_counter) = event_counter_read();
+    event_counter_increment();
+    activate_game_occured.emit(
+        event_counter,
+        game_idx,
+        PLAYERS_PER_GAME,
+        arr_player_addresses
+    );
+
+    return();
 
 }
 
@@ -345,7 +307,7 @@ func populate_player_adr_update_queue{syscall_ptr: felt*, pedersen_ptr: HashBuil
     ) -> () {
     alloc_locals;
 
-    if offset == PLAYERS_PER_GAME {
+    if (offset == PLAYERS_PER_GAME) {
         return();
     }
 
@@ -362,23 +324,13 @@ func populate_player_adr_update_queue{syscall_ptr: felt*, pedersen_ptr: HashBuil
         arr_player_addresses,
         curr_head_idx,
         offset + 1
-    )
+    );
 
     return();
 }
 
 
-@external
-func assert_caller_is_lobby{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> () {
-    
-    let (caller) = get_caller_address();
-    let (lobby_address) = lobby_address_read();
-    with_attr error_message ("Caller is not the lobby contract"){
-        assert caller = lobby_address;
-    }
 
-    return();
-}
 
 
 @external

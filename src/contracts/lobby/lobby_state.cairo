@@ -24,6 +24,10 @@ func address_to_queue_index (address : felt) -> (idx : felt) {
 func queue_index_to_address (idx : felt) -> (address : felt) {
 }
 
+@storage_var
+func event_counter () -> (val : felt) {
+}
+
 
 namespace lobby_state_functions {
 
@@ -61,7 +65,14 @@ namespace lobby_state_functions {
         let (address) = queue_index_to_address.read(idx);
 
         return (address,);
+    }
 
+    @view
+    func event_counter_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+        val: felt) {
+        let (val) = event_counter.read();
+
+        return (val,);
     }
 
 
@@ -97,5 +108,27 @@ namespace lobby_state_functions {
         queue_index_to_address.write(idx, address);
 
         return ();
+    }
+
+    func event_counter_increment{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) -> () {
+
+    // Check that caller is an authorized contract address
+    // TODO: Change lobby to include all authorized contract addresses
+    let (caller) = get_caller_address();
+    let (lobby) = get_caller_address();
+    assert caller = lobby;
+
+    let (val) = event_counter.read();
+    event_counter.write(val + 1);
+
+    return ();
+    }
+
+    func event_counter_reset{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (
+    ) {
+    event_counter.write(0);
+
+    return ();
     }
 }

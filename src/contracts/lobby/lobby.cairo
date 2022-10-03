@@ -15,17 +15,33 @@ from src.contracts.lobby.lobby_state import (
     lobby_state_functions
 )
 
-from src.contracts.game.game import (
-    game_idx_to_status,
-    game_idx_counter,
-    activate_game,
-    activate_game_occured
-)
+// from src.contracts.game.game import (
+//     game_idx_to_status,
+//     game_idx_counter,
+//     activate_game,
+//     activate_game_occured
+// )
 
+
+@event
+func ask_to_queue_occurred (
+    event_counter : felt,
+    account : felt,
+    queue_idx : felt
+){
+}
+
+
+// Interfacing with the Game contract
 
 @contract_interface
 namespace IGameContract {
-    func activate_game(arr_player_adresses_len: felt, arr_player_adresses: felt*)
+    func init_game(game_idx_to_status) -> () {
+    }
+    func activate_game(arr_player_adresses_len: felt, arr_player_adresses: felt*) -> () {
+    }
+    func set_lobby_address(address) -> () {
+    }
 }
 
 
@@ -35,6 +51,8 @@ func constructor {syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_
 
     //
     // Permission check to be implemented later
+    let (event_counter) = lobby_state_functions.event_counter_read();
+    lobby_state_functions.event_counter_increment();
 
 
     return();
@@ -59,24 +77,24 @@ func anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     //
     // Revert if caller index-in-queue is not zero, indicating the caller is already in the queue
     //
-    let (caller_idx_in_queue) = address_to_queue_index_read(caller);
+    let (caller_idx_in_queue) = lobby_state_functions.address_to_queue_index_read(caller);
     with_attr error_message("caller index in queue != 0 => caller already in queue.") {
         assert caller_idx_in_queue = 0;
     }
     //
     // Enqueue
     //
-    let (curr_tail_idx) = queue_tail_index_read();
+    let (curr_tail_idx) = lobby_state_functions.queue_tail_index_read();
     let new_player_idx = curr_tail_idx + 1;
-    queue_tail_index_write(new_player_idx);
-    address_to_queue_index_write(caller, new_player_idx);
-    queue_index_to_address_write(new_player_idx, caller);
+    lobby_state_functions.queue_tail_index_write(new_player_idx);
+    lobby_state_functions.address_to_queue_index_write(caller, new_player_idx);
+    lobby_state_functions.queue_index_to_address_write(new_player_idx, caller);
 
     //
     // Event emission
     //
-    let (event_counter) = event_counter_read();
-    event_counter_increment();
+    let (event_counter) = lobby_state_functions.event_counter_read();
+    lobby_state_functions.event_counter_increment();
     ask_to_queue_occurred.emit(event_counter, caller, new_player_idx);
 
     return ();
@@ -95,15 +113,15 @@ func reset_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
         assert YOANN = caller;
     }
 
-    let (tail) = queue_tail_index.read();
+    let (tail) = lobby_state_functions.queue_tail_index_read();
     if (idx == tail) {
         return();
     }
 
     // reset the storage vars
-    let (player_address) = queue_index_to_address_read(idx);
-    queue_index_to_address_write(idx, 0);
-    address_to_queue_index_write(player_address, 0);
+    let (player_address) = lobby_state_functions.queue_index_to_address_read(idx);
+    lobby_state_functions.queue_index_to_address_write(idx, 0);
+    lobby_state_functions.address_to_queue_index_write(player_address, 0);
 
     // recursion
     reset_queue(idx + 1);
@@ -115,6 +133,8 @@ func reset_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 func find_idle_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     idx: felt) -> (has_idle_game: felt, idle_game_idx: felt
 ) {
+
+    // TODO: Use different counter
     let last_game_idx = game_idx_counter.read();
     if (idx == last_game_idx) {
         return (0, 0);
@@ -141,8 +161,8 @@ func can_dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*,
     ) {
     
     // check if at least 2 players are in the queue
-    let (curr_head_idx) = queue_head_index_read();
-    let (curr_tail_idx) = queue_tail_index_read();
+    let (curr_head_idx) = lobby_state_functions.queue_head_index_read();
+    let (curr_tail_idx) = lobby_state_functions.queue_tail_index_read();
     let (curr_len) = curr_tail_idx - curr_head_idx;
     let (bool_has_suficient_players_in_queue) = is_le(2, curr_len);
 
@@ -185,18 +205,20 @@ func dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     );
 
     // Update queue head index
-    queue_index_to_address_write(curr_head_idx + PLAYERS_PER_GAME);
+    lobby_state_functions.queue_index_to_address_write(curr_head_idx + PLAYERS_PER_GAME);
 
 
     // Set game status to active (felt: 107079782725221)
+    // TODO:
     game_idx_to_status_write(idle_game_idx, 107079782725221);
 
 
     // Dispatch to game
-    activate_game(idle_game_idx, arr_player_adresses_len = PLAYERS_PER_GAME, arr_player_addresses);
+    IGameContract.activate_game(idle_game_idx, arr_player_adresses_len = PLAYERS_PER_GAME, arr_player_addresses);
 
     // Event Emission
-    let (event_counter) = event_counter_read();
+    // TODO: 
+    let (event_counter) = lobby_state_functions.event_counter_read();
     event_counter_increment();
     activate_game_occured.emit(
         event_counter,
@@ -222,12 +244,12 @@ func populate_player_adr_update_queue{syscall_ptr: felt*, pedersen_ptr: HashBuil
     }
 
     // populate arr_player_addresses
-    let (player_address) = queue_index_to_address_read(curr_head_idx + offset + 1);
+    let (player_address) = lobby_state_functions.queue_index_to_address_read(curr_head_idx + offset + 1);
     assert arr_player_addresses [offset] = player_adr;
 
     // Clear queue storage at idx
-    address_to_queue_index_write(player_address, 0);
-    queue_index_to_address_write(curr_head_idx + offset + 1, 0);
+    lobby_state_functions.address_to_queue_index_write(player_address, 0);
+    lobby_state_functions.queue_index_to_address_write(curr_head_idx + offset + 1, 0);
 
     // Recursion
     populate_player_adr_update_queue(
@@ -238,48 +260,3 @@ func populate_player_adr_update_queue{syscall_ptr: felt*, pedersen_ptr: HashBuil
 
     return();
 }
-
-
-
-
-
-
-// @external
-// func can_dispatch_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-//     arguments
-// ) -> (
-// ) {
-
-//     let (universe_idx) = 
-
-//     return (universeID);
-// }
-
-// @external
-// func dispatch_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-//     arguments
-// ) {
-    
-// }
-
-
-
-// Not sure if exiting the queue mid-wait for a game to start is a necessary feature for the MVP. 
-// To be implemented at a later stage.
-
-// @external
-// func anyone_pop_from_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
-//     alloc_locals;
-
-//     // Revert if player is not already in the queue, ie. if index-in-queue is not zero.
-//     let (caller) = get_caller_address();
-//     with_attr error_message("caller is not in the queue") {
-//         let (idx) = address_to_queue_index_read(caller);
-//         assert_not_zero(idx);
-//     }
-
-//     // Pop player from queue.
-//     address_to_queue_index_write(caller, 0);
-
-//     return ();
-// }

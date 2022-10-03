@@ -13,9 +13,6 @@ from src.contracts.game.grid import (
     grid_address_for_coordinates_write
 )
 
-from src.contracts.design.events import (
-    event_counter
-)
 
 @storage_var
 func lobby_address () -> (address: felt) {
@@ -137,8 +134,7 @@ func assert_caller_is_lobby{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 // This function should be automated using yagi so that there are at least x idle games available.
 // x depending on the number of games played in the last few blocks or the number of players who have joined the queue. 
 @external
-func init_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    player1: felt, player2: felt) -> (game_idx: felt, ) {
+func init_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (game_idx: felt ) {
 
     // Read current game index
     let (game_idx) = game_idx_counter.read() + 1;

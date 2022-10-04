@@ -41,7 +41,7 @@ func GameActivationOccured (
 
 @contract_interface
 namespace IGameContract {
-    func activate_game(arr_player_adresses_len: felt, arr_player_adresses: felt*) -> () {
+    func activate_game(arr_player_addresses_len: felt, arr_player_addresses: felt*) -> () {
     }
 
     func game_idx_to_status_read(game_idx: felt) -> (game_status: felt) {
@@ -140,8 +140,10 @@ func reset_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 func set_game_contract_address{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     address: felt) -> (){
 
-    // TODO: Make this function callable only once
-
+    let (game_contract_address) = lobby_state_functions.game_contract_address_read();
+    with_attr error_message ("Game Contract Address already set") {
+        assert game_contract_address = 0;
+    }
     lobby_state_functions.game_contract_address_write(address);    
     return();
 }
@@ -173,7 +175,7 @@ func find_idle_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
 
 
 
-@external
+@view
 func can_dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     ) -> (
         curr_head_idx : felt,
@@ -272,8 +274,8 @@ func dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     // Dispatch to game
     IGameContract.activate_game(
     game_contract_address,
-    PLAYERS_PER_GAME,
-    arr_player_addresses
+    arr_player_addresses_len = PLAYERS_PER_GAME,
+    arr_player_addresses = arr_player_addresses
     );
 
     // Event Emission

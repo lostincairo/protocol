@@ -44,11 +44,11 @@ func block_height_at_game_activation(game_idx: felt) -> (block_height: felt) {
 
 // Will be picked up by the indexer
 @event
-func init_game_occured(game_idx_counter: felt){
+func InitGameOccured(game_idx_counter: felt){
 }
 
 @event
-func activate_game_occured(game_idx_counter: felt) {
+func ActivateGameOccured(game_idx_counter: felt, block_height_at_game_activation: felt) {
 }
 
 // Getters
@@ -163,7 +163,7 @@ func init_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     game_idx_to_status_write(game_idx + 1, 1768189029);
 
     // fires a new event
-    init_game_occured.emit(game_idx + 1);
+    InitGameOccured.emit(game_idx + 1);
 
     let new_game_idx = game_idx + 1;
 
@@ -173,24 +173,25 @@ func init_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
 @external
 func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    game_idx: felt, arr_player_adresses_len: felt, arr_player_adresses: felt*) -> () {
-    
+     arr_player_addresses_len: felt, arr_player_addresses: felt*) -> () {
+    alloc_locals;
     // Assert that lobby is calling the function
-    assert_caller_is_lobby();
+    // assert_caller_is_lobby();
 
     // Assert that 2 players are dispatched to the game
-    assert arr_player_adresses_len = PLAYERS_PER_GAME;
+    assert arr_player_addresses_len = PLAYERS_PER_GAME;
 
     // TODO: Give players health, movement and attacks
 
-
+    // let (player1) = arr_player_addresses[0];
+    // let (player2) = arr_player_addresses[1];
     // Record L2 block at activation
 
     let (block) = get_block_number();
-    block_height_at_game_activation_write(game_idx, block);
+    block_height_at_game_activation_write(1, block);
 
     // Event emission
-
+    ActivateGameOccured.emit(1, block);
 
     return();
 

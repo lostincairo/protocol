@@ -103,6 +103,7 @@ func block_height_at_game_activation_write{syscall_ptr : felt*, pedersen_ptr : H
     return();
 }
 
+@external
 func game_idx_to_status_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     game_idx: felt, game_status: felt) -> () {
     

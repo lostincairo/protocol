@@ -482,8 +482,6 @@ func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 
     // Event emission
     ActivateGameOccured.emit(game_idx, block, arr_player_addresses_len, arr_player_addresses, player_turn);
-    InitPlayerOccured.emit(game_idx, arr_player_addresses[0]);
-    InitPlayerOccured.emit(game_idx, arr_player_addresses[1]);
 
     return();
 

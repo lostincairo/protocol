@@ -32,6 +32,13 @@ from src.contracts.design.constants import (
 )
 
 
+//TODO: In the game functions, try to hardcode the opponents address and not leave it as a guess to the player
+// even though it is handled through the front-end, you never know
+
+//TODO: Forfeit player who submits a round after more than some blocks
+
+// In the same light, if the game ends and the final round lasted more than x blocks
+// Could be solved with automation
 
 // Game Structure
 @storage_var
@@ -87,6 +94,8 @@ func y_position_per_player(player_address: felt) -> (y: felt) {
 }
 
 // TODO: Might not be working rn, need to update it with function calls. Check if necessary
+// Does not work at game initiation. Only after the first move it is recorded
+// TODO: record it at player init
 @storage_var
 func player_address_per_coordinates(x: felt, y: felt) -> (player_address: felt) {
 }
@@ -510,6 +519,7 @@ func end_turn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     // "ko" to felt: 27503
     let (opponent_health) = health_per_player_read(opponent_address);
     if(is_le(opponent_health, 0) == 1) {
+        EndRoundOccured.emit(game_idx, caller, opponent_address, block_height, opponent_health, game_duration);
         end_game(game_idx, caller, opponent_address, 27503);
         return();
     }
@@ -519,6 +529,7 @@ func end_turn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (game_init) = block_height_at_game_activation_read(game_idx);
     let game_duration = block_height - game_init;
     if(is_le(MAX_GAME_DURATION, game_duration) == 1) {
+        EndRoundOccured.emit(game_idx, caller, opponent_address, block_height, opponent_health, game_duration);
         end_game(game_idx, caller, opponent_address, 32767015872591220);
         return();
     }
@@ -535,6 +546,8 @@ func end_turn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return();
 }
 
+// TODO: Add function so that the player who has the most health point is the winner
+// Right now it is the one calling the function. One could stay idle and win by timeout
 func end_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     game_idx: felt, caller: felt, opponent_address: felt, end_type: felt) -> () {
     alloc_locals;
@@ -589,6 +602,10 @@ func bow{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     with_attr error_message ("Wait for your turn to play") {
         assert caller = player_turn;
+    }
+
+    with_attr error_message ("Come on, don't hit yourself") {
+        assert_not_equal(opponent_address, caller);
     }
 
     with_attr error_message ("Attack failed, try aiming at a player") {
@@ -647,6 +664,10 @@ func punch{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (opponent_position_y) = y_position_per_player_read(opponent_address);
 
 
+    with_attr error_message ("Come on, don't hit yourself") {
+        assert_not_equal(opponent_address, caller);
+    }
+
     with_attr error_message ("Wait for your turn to play") {
         assert caller = player_turn;
     }
@@ -690,6 +711,8 @@ func punch{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
 
 // TODO: Add collision detection and pathfinding
+// TODO: Right now you cannot place your player on the same line or column.
+// Need to add 'and' statement between the 2 conditions
 @external
 func move{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     opponent_address: felt, x_dest: felt, y_dest: felt
@@ -708,6 +731,14 @@ func move{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let move_dist = move_x + move_y;
 
     let (move_remaining) = movement_per_player_read(caller);
+
+    with_attr error_message ("Wait for your turn to play") {
+        assert caller = player_turn;
+    }
+
+    with_attr error_message ("Well tried, you cannot declare yourself as the opponent") {
+        assert_not_equal(opponent_address, caller);
+    }
 
     // Check destination is within bounds
     with_attr error_message("Destination is outside of bounds, please stay in the Arena") {

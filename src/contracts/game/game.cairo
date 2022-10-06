@@ -27,7 +27,8 @@ from src.contracts.design.constants import (
     MAX_RANGE_X_PUNCH,
     MAX_RANGE_Y_PUNCH,
     DAMAGE_PUNCH,
-    ACTION_PUNCH
+    ACTION_PUNCH,
+    MAX_GAME_DURATION
 )
 
 
@@ -49,6 +50,11 @@ func game_idx_to_status(game_idx: felt) -> (game_status: felt) {
 func block_height_at_game_activation(game_idx: felt) -> (block_height: felt) {
 }
 
+@storage_var
+func block_height_at_game_end(game_idx: felt) -> (block_height: felt) {
+}
+
+
 
 
 
@@ -66,10 +72,12 @@ func movement_per_player(player_address: felt) -> (movement_value: felt) {
 func action_per_player(player_address: felt) -> (action_value: felt) {
 }
 
+// TODO: add game_idx
 @storage_var
 func player_turn() -> (player_address: felt) {
 }
 
+// IDEA: add game_idx to those storage vars to enable playing games simultaneously - would require making updates to lobby
 @storage_var
 func x_position_per_player(player_address: felt) -> (x: felt) {
 }
@@ -102,6 +110,7 @@ func InitGameOccured(game_idx_counter: felt){
 func ActivateGameOccured(game_idx_counter: felt, block_height_at_game_activation: felt, arr_player_addresses_len: felt, arr_player_addresses: felt*, player_turn: felt) {
 }
 
+//TODO: Add game_idx
 @event
 func InitialPositionSetOccured(player_address: felt, x: felt, y: felt) {
 }
@@ -112,6 +121,7 @@ func InitPlayerOccured(game_idx: felt, player_address: felt) {
 
 // Need to add regen attribute for regen actions 
 // Possibly record initial move and destination move for attacks shifting players (TBC)
+//TODO: Add game_idx
 @event
 func ActionOccured(caller: felt, player_address: felt, action: felt, damage: felt, block_height: felt, action_points_remaining: felt, caller_position_x: felt, caller_position_y: felt, player_position_x: felt, player_position_y: felt) {
 }
@@ -121,7 +131,11 @@ func MoveOccured(caller: felt, block_height: felt, move_points_remaining: felt, 
 }
 
 @event
-func EndRoundOccured() {
+func EndRoundOccured(game_idx: felt, current_turn: felt, next_turn: felt, block_height: felt, opponent_health: felt, game_duration: felt, ) {
+}
+
+@event
+func EndGameOccured(game_idx: felt, winner: felt, loser: felt, end_type: felt, block_height_at_game_activation: felt, block_height_at_game_end_read: felt) {
 }
 
 
@@ -149,6 +163,14 @@ func block_height_at_game_activation_read{syscall_ptr : felt*, pedersen_ptr : Ha
     game_idx: felt) -> (block_height: felt) {
 
     let block_height = block_height_at_game_activation.read(game_idx);
+    return(block_height);
+}
+
+@view
+func block_height_at_game_end_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    game_idx: felt) -> (block_height: felt) {
+
+    let block_height = block_height_at_game_end.read(game_idx);
     return(block_height);
 }
 
@@ -233,6 +255,15 @@ func  block_height_at_game_activation_write{syscall_ptr : felt*, pedersen_ptr : 
     return();
 }
 
+func  block_height_at_game_end_write{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    game_idx: felt, block_height: felt) -> () {
+
+    block_height_at_game_end.write(game_idx, block_height);
+    return();
+}
+
+
+// TODO: for prod, remove those external tags
 @external
 func game_idx_to_status_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     game_idx: felt, game_status: felt) -> () {
@@ -389,6 +420,21 @@ func set_initial_player_position{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*,
     return();
 }
 
+
+@external
+func init_player{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    player_address: felt, game_idx: felt) ->() {
+    
+    health_per_player_write(player_address, MAX_HEALTH);
+    movement_per_player_write(player_address, MAX_MOVEMENT_PER_TURN);
+    action_per_player_write(player_address, MAX_ACTION_PER_TURN);
+    
+
+    InitPlayerOccured.emit(game_idx, player_address);
+    return();
+}
+
+
 @external
 func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
      game_idx: felt ,arr_player_addresses_len: felt, arr_player_addresses: felt*) -> () {
@@ -433,44 +479,74 @@ func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 }
 
 
+
+// TODO: Add Yagi automation to end the turn automatically after a certain block height
+// Make it another function, this one should remain to end the turn manually
 @external
-func init_player{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    player_address: felt, game_idx: felt) ->() {
-    
-    health_per_player_write(player_address, MAX_HEALTH);
-    movement_per_player_write(player_address, MAX_MOVEMENT_PER_TURN);
-    action_per_player_write(player_address, MAX_ACTION_PER_TURN);
-    
+func end_turn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    game_idx: felt, opponent_address: felt) {
+    alloc_locals;
 
-    InitPlayerOccured.emit(game_idx, player_address);
-    return();
-}
-
-
-@external
-func end_round{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    arguments
-) {
     let (caller) = get_caller_address();
+    let (block_height) = get_block_number();
+
+    // Assert it's the caller's turn
+    with_attr error_message ("This is not your turn") {
+        let (player_turn) = player_turn_read();
+        assert caller = player_turn;
+    }
+
     // Game termination checks
-    // Check if the player has remaining health
+    // Check if the opponent has remaining health
+    // "ko" to felt: 27503
+    let (opponent_health) = health_per_player_read(opponent_address);
+    if(is_le(opponent_health, 0) == 1) {
+        end_game(game_idx, caller, opponent_address, 27503);
+        return();
+    }
+
     // Check if game duration is elapsed
+    // "timeout" to felt: 32767015872591220
+    let (game_init) = block_height_at_game_activation_read(game_idx);
+    let game_duration = block_height - game_init;
+    if(is_le(MAX_GAME_DURATION, game_duration) == 1) {
+        end_game(game_idx, caller, opponent_address, 32767015872591220);
+        return();
+    }
 
-
-        // Reset Action and Movement points
+    // Reset Action and Movement points
     action_per_player_write(caller, MAX_ACTION_PER_TURN);
     movement_per_player_write(caller, MAX_MOVEMENT_PER_TURN);
 
+    // Hand the round to the other player
+    player_turn_write(opponent_address);
+
+    EndRoundOccured.emit(game_idx, caller, opponent_address, block_height, opponent_health, game_duration);
 
     return();
 }
 
-// Missing the link with the game_idx
-@external
 func end_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    arguments
-) {
+    game_idx: felt, caller: felt, opponent_address: felt, end_type: felt) -> () {
+    alloc_locals;
 
+    let (block_height) = get_block_number();
+
+    // Reset player variables
+    x_position_per_player_write(caller, 0);
+    y_position_per_player_write(caller, 0);
+
+    x_position_per_player_write(opponent_address, 0);
+    y_position_per_player_write(opponent_address, 0);
+
+    block_height_at_game_end_write(game_idx, block_height);
+
+    // Set game status to "over" -> felt 1870030194
+    game_idx_to_status_write(game_idx, 1870030194);
+
+    let (game_activation) = block_height_at_game_activation_read(game_idx);
+
+    EndGameOccured.emit(game_idx, caller, opponent_address, end_type, game_activation, block_height);
 
     return(); 
 }

@@ -1,23 +1,33 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import (assert_lt, assert_le, assert_nn, assert_not_equal, assert_nn_le, assert_not_zero, sqrt)
+from starkware.cairo.common.math import (assert_lt, assert_le, assert_nn, assert_not_equal, assert_nn_le, assert_not_zero, sqrt, abs_value)
 from starkware.cairo.common.math_cmp import (is_le, is_nn_le, is_not_zero)
 from starkware.cairo.common.alloc import alloc
 from starkware.starknet.common.syscalls import (get_block_number, get_caller_address)
 
-from src.contracts.game.grid import (
-    grid_x_coordinate_for_address_read,
-    grid_y_coordinate_for_address_read,
-    grid_address_for_coordinates_read,
-    grid_address_for_coordinates_write
-)
+// from src.contracts.game.grid import (
+//     grid_x_coordinate_for_address_read,
+//     grid_y_coordinate_for_address_read,
+//     grid_address_for_coordinates_read,
+//     grid_address_for_coordinates_write
+// )
 
 from src.contracts.design.constants import (
+    MAX_X,
+    MAX_Y,
     PLAYERS_PER_GAME,
     MAX_HEALTH,
     MAX_MOVEMENT_PER_TURN,
     MAX_ACTION_PER_TURN,
+    MAX_RANGE_X_BOW,
+    MAX_RANGE_Y_BOW,
+    DAMAGE_BOW,
+    ACTION_BOW,
+    MAX_RANGE_X_PUNCH,
+    MAX_RANGE_Y_PUNCH,
+    DAMAGE_PUNCH,
+    ACTION_PUNCH
 )
 
 
@@ -68,6 +78,7 @@ func x_position_per_player(player_address: felt) -> (x: felt) {
 func y_position_per_player(player_address: felt) -> (y: felt) {
 }
 
+// TODO: Might not be working rn, need to update it with function calls. Check if necessary
 @storage_var
 func player_address_per_coordinates(x: felt, y: felt) -> (player_address: felt) {
 }
@@ -99,7 +110,19 @@ func InitialPositionSetOccured(player_address: felt, x: felt, y: felt) {
 func InitPlayerOccured(game_idx: felt, player_address: felt) {
 }
 
+// Need to add regen attribute for regen actions 
+// Possibly record initial move and destination move for attacks shifting players (TBC)
+@event
+func ActionOccured(caller: felt, player_address: felt, action: felt, damage: felt, block_height: felt, action_points_remaining: felt, caller_position_x: felt, caller_position_y: felt, player_position_x: felt, player_position_y: felt) {
+}
 
+@event
+func MoveOccured(caller: felt, block_height: felt, move_points_remaining: felt, caller_initial_x: felt, caller_initial_y: felt, caller_destination_x: felt, caller_destination_y: felt ) {
+}
+
+@event
+func EndRoundOccured() {
+}
 
 
 
@@ -336,21 +359,32 @@ func init_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return (new_game_idx,);
 }
 
-// TODO: Manage same positionning, revert if it is the case
+// TODO: Manage concurrent positionning, revert if it is the case
 @external
 func set_initial_player_position{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     x: felt, y: felt
 ) {
-    let (player_address) = get_caller_address();
-    let (x_position) = x_position_per_player_read(player_address);
-    let (y_position) = y_position_per_player_read(player_address);
-    assert_not_zero(x_position);
-    assert_not_zero(y_position);
+    let (caller) = get_caller_address();
 
-    x_position_per_player_write(player_address, x); 
-    y_position_per_player_write(player_address, y);
+    with_attr error_message ("Initial position is out of bounds. Please remain in the Arena") {
+    assert_le(x, MAX_X);
+    assert_le(y, MAX_Y);
 
-    InitialPositionSetOccured.emit(player_address, x, y);
+    assert_lt(0, x);
+    assert_lt(0, y);
+    }
+
+    with_attr error_message ("Initial position has already been set") {
+    let (x_position) = x_position_per_player_read(caller);
+    let (y_position) = y_position_per_player_read(caller);
+    assert x_position = 0;
+    assert y_position = 0;
+    }
+
+    x_position_per_player_write(caller, x); 
+    y_position_per_player_write(caller, y);
+
+    InitialPositionSetOccured.emit(caller, x, y);
     
     return();
 }
@@ -417,28 +451,215 @@ func init_player{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 func end_round{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     arguments
 ) {
+    let (caller) = get_caller_address();
+    // Game termination checks
+    // Check if the player has remaining health
+    // Check if game duration is elapsed
+
+
+        // Reset Action and Movement points
+    action_per_player_write(caller, MAX_ACTION_PER_TURN);
+    movement_per_player_write(caller, MAX_MOVEMENT_PER_TURN);
+
 
     return();
 }
 
+// Missing the link with the game_idx
+@external
+func end_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    arguments
+) {
+
+
+    return(); 
+}
 
 
 
 // Attacks
+// TODO: For prod, Add game_idx check to make sure that they cannot attack players outside of the current game
+// Requires mapping to storage the addresses of the players to the game_idx 
+// TODO: Refactor separate functions into individual units, and create interface to the attack contract where they will be stored
+//TODO: Add VRF from Empiric Network for random health point decrease
 @external
 func bow{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    player_address: felt, x_dest: felt, y_dest: felt) -> (
+    opponent_address: felt, x_dest: felt, y_dest: felt) -> (
 ) {
 
-    with_attr error_message ("Attack failed, try aiming at a player") {
+    // Converted Attack Name to felt -> 6451063
+    let action = 6451063;
+
+    let (block_height) = get_block_number();
+
+    let (caller) = get_caller_address();
+    let (player_turn) = player_turn_read();
+
+    let (caller_position_x) = x_position_per_player_read(caller);   
+    let (caller_position_y) = y_position_per_player_read(caller);
     
+    let (opponent_position_x) = x_position_per_player_read(opponent_address);
+    let (opponent_position_y) = y_position_per_player_read(opponent_address);
+
+
+    with_attr error_message ("Wait for your turn to play") {
+        assert caller = player_turn;
     }
+
+    with_attr error_message ("Attack failed, try aiming at a player") {
+        assert x_dest = opponent_position_x;
+        assert y_dest = opponent_position_y;
+    }
+
+    with_attr error_message ("No action points left, you can either move or end the turn") {
+        let (caller_action_points) = action_per_player_read(caller);
+        assert_lt(0, caller_action_points);
+    }
+
+    // Assert absolute distance between player is within the range of the attack
+    with_attr error_message ("Attack failed, try to get in range") {
+        let x_dist = abs_value(opponent_position_x - caller_position_x);
+        let y_dist = abs_value(opponent_position_y - caller_position_y);
+
+        assert_le(x_dist, MAX_RANGE_X_BOW);
+        assert_le(y_dist, MAX_RANGE_Y_BOW);
+    }
+
+    let (curr_health) = health_per_player_read(opponent_address);
+    // Add ref to VRF function here
+    let attack_damage = DAMAGE_BOW;
+    let new_health = curr_health - attack_damage;
+
+    health_per_player_write(opponent_address, new_health);
+
+
+    let new_action_points = caller_action_points - ACTION_BOW;
+    action_per_player_write(caller, new_action_points);
+
+    
+    ActionOccured.emit(caller, opponent_address, action, attack_damage, block_height, new_action_points, caller_position_x, caller_position_y, opponent_position_x, opponent_position_y);
+
     return();
 }
 
 @external
 func punch{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-    player_address: felt, x_dest: felt, y_dest: felt
+    opponent_address: felt, x_dest: felt, y_dest: felt
 ) {
+
+    // Converted Attack Name to felt -> 483006505832
+    let action = 483006505832;
+
+    let (block_height) = get_block_number();
+
+    let (caller) = get_caller_address();
+    let (player_turn) = player_turn_read();
+
+    let (caller_position_x) = x_position_per_player_read(caller);   
+    let (caller_position_y) = y_position_per_player_read(caller);
+    
+    let (opponent_position_x) = x_position_per_player_read(opponent_address);
+    let (opponent_position_y) = y_position_per_player_read(opponent_address);
+
+
+    with_attr error_message ("Wait for your turn to play") {
+        assert caller = player_turn;
+    }
+
+    with_attr error_message ("Attack failed, try aiming at an opponent") {
+        assert x_dest = opponent_position_x;
+        assert y_dest = opponent_position_y;
+    }
+
+    with_attr error_message ("No action points left, you can either move or end the turn") {
+        let (caller_action_points) = action_per_player_read(caller);
+        assert_lt(0, caller_action_points);
+    }
+
+    // Assert absolute distance between playersis within the range of the attack
+    with_attr error_message ("Attack failed, try to get in range") {
+        let x_dist = abs_value(opponent_position_x - caller_position_x);
+        let y_dist = abs_value(opponent_position_y - caller_position_y);
+
+        assert_le(x_dist, MAX_RANGE_X_PUNCH);
+        assert_le(y_dist, MAX_RANGE_Y_PUNCH);
+    }
+
+    let (curr_health) = health_per_player_read(opponent_address);
+    // Add ref to VRF function here
+    let attack_damage = DAMAGE_PUNCH;
+    let new_health = curr_health - attack_damage;
+
+    health_per_player_write(opponent_address, new_health);
+
+
+    let new_action_points = caller_action_points - ACTION_PUNCH;
+    action_per_player_write(caller, new_action_points);
+
+    
+    ActionOccured.emit(caller, opponent_address, action, attack_damage, block_height, new_action_points, caller_position_x, caller_position_y, opponent_position_x, opponent_position_y);
+
+
     return();
 }
+
+
+// TODO: Add collision detection and pathfinding
+@external
+func move{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    opponent_address: felt, x_dest: felt, y_dest: felt
+) {
+    let (caller) = get_caller_address();
+    let (block_height) = get_block_number();
+
+    let (caller_position_x) = x_position_per_player_read(caller);   
+    let (caller_position_y) = y_position_per_player_read(caller);
+
+    let (opponent_position_x) = x_position_per_player_read(opponent_address);
+    let (opponent_position_y) = y_position_per_player_read(opponent_address);
+
+    let move_x = abs_value(caller_position_x - x_dest);
+    let move_y = abs_value(caller_position_y - y_dest);
+    let move_dist = move_x + move_y;
+
+    let (move_remaining) = movement_per_player_read(caller);
+
+    // Check destination is within bounds
+    with_attr error_message("Destination is outside of bounds, please stay in the Arena") {
+        assert_le(x_dest, MAX_X);
+        assert_le(y_dest, MAX_Y);
+
+        assert_lt(0, x_dest);
+        assert_lt(0, y_dest);
+    }
+
+    // Check destination is different from origin
+    with_attr error_message ("Destination is same as origin, please try another move") {
+        assert_not_equal(caller_position_x, x_dest);
+        assert_not_equal(caller_position_y, y_dest);   
+    }
+
+    // Check if destination is not opponent's position
+    with_attr error_message("Destination is the opponent's position, please try another move") {
+        assert_not_equal(opponent_position_x, x_dest);
+        assert_not_equal(opponent_position_y, y_dest);
+    }
+
+    // Check if caller still has movement points to complete the move
+    with_attr error_message ("You don't have enough movement points to complete the move, please try another move") {
+        assert_le(move_dist, move_remaining);
+    }
+
+    x_position_per_player_write(caller, x_dest);
+    y_position_per_player_write(caller, y_dest);
+
+    player_address_per_coordinates_write(x_dest, y_dest, caller);
+
+    let points_remaining_after_move = move_remaining - move_dist;
+    movement_per_player_write(caller, points_remaining_after_move);
+
+    MoveOccured.emit(caller, block_height, points_remaining_after_move, caller_position_x, caller_position_y, x_dest, y_dest);
+
+    return();
+}
+

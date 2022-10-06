@@ -17,3 +17,18 @@ const MAX_CONCURRENT_GAMES = 50;
 const MAX_MOVEMENT_PER_TURN = 5;
 const MAX_ACTION_PER_TURN = 2;
 const MAX_HEALTH = 100;
+
+
+// Attacks
+
+// Bow
+const MAX_RANGE_X_BOW = 5;
+const MAX_RANGE_Y_BOW = 5;
+const DAMAGE_BOW = 12;
+const ACTION_BOW = 1;
+
+// Punch
+const MAX_RANGE_X_PUNCH = 2;
+const MAX_RANGE_Y_PUNCH = 2;
+const DAMAGE_PUNCH = 36;
+const ACTION_PUNCH = 1;

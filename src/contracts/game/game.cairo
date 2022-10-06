@@ -17,8 +17,9 @@ from src.contracts.design.constants import (
     PLAYERS_PER_GAME,
 )
 
-// Storage
 
+
+// Game Structure
 @storage_var
 func lobby_address () -> (address: felt) {
 }
@@ -27,16 +28,49 @@ func lobby_address () -> (address: felt) {
 func game_idx_counter() -> (game_idx: felt) {
 }
 
-
-// Each game id is mapped to a status (idle, ongoing, over)
 @storage_var
 func game_idx_to_status(game_idx: felt) -> (game_status: felt) {
 }
 
-// Store block height for each game idx at game activation
 @storage_var
 func block_height_at_game_activation(game_idx: felt) -> (block_height: felt) {
 }
+
+
+
+// Game Specific storage vars
+@storage_var
+func health_per_player(player_address: felt) -> (health_value: felt) {
+}
+
+@storage_var
+func movement_per_player(player_address: felt) -> (movement_value: felt) {
+}
+
+@storage_var
+func action_per_player(player_address: felt) -> (action_value: felt) {
+}
+
+@storage_var
+func player_turn() -> (player_address: felt) {
+}
+
+@storage_var
+func x_position_per_player(player_address: felt) -> (x: felt) {
+}
+
+@storage_var
+func y_position_per_player(player_address: felt) -> (y: felt) {
+}
+
+@storage_var
+func player_address_per_coordinates(x: felt, y: felt) -> (player_address: felt) {
+}
+
+
+
+
+
 
 
 
@@ -50,6 +84,12 @@ func InitGameOccured(game_idx_counter: felt){
 @event
 func ActivateGameOccured(game_idx_counter: felt, block_height_at_game_activation: felt) {
 }
+
+
+
+
+
+
 
 // Getters
 @view
@@ -86,6 +126,61 @@ func game_idx_to_status_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, r
     return (game_status,);   
 }
 
+@view
+func health_per_player_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    player_address: felt) -> (health_value: felt) {
+    let health_value = health_per_player.read(player_address);
+    return(health_value);
+}
+
+@view
+func movement_per_player_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    player_address: felt) -> (movement_value: felt) {
+    let movement_value = movement_per_player.read(player_address);
+    return(movement_value);
+}
+
+@view
+func action_per_player_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    player_address: felt) -> (action_value: felt) {
+    let action_value = action_per_player.read(player_address);
+    return(action_value);
+}
+
+@view
+func player_turn_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+) -> (player_address: felt) {
+    let (player_address) = player_turn.read();
+
+    return(player_address,);
+}
+
+@view
+func x_position_per_player_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    player_address: felt) -> (x: felt) {
+
+    let (x) = x_position_per_player.read(player_address);
+    return(x);
+}
+
+@view
+func y_position_per_player_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+   player_address: felt) -> (y: felt) {
+
+    let  (y) = y_position_per_player.read(player_address);
+    return(y);
+}
+
+@view
+func player_address_per_coordinates_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+   player_address: felt) -> (y: felt) {
+
+    let  (player_address) = player_address_per_coordinates.read(x,y);
+    return(player_address);
+}
+
+
+
 
 // Setters
 func lobby_address_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -96,7 +191,7 @@ func lobby_address_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     return ();
 }
 
-func block_height_at_game_activation_write{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func  player_address_at_game_activation_write{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     game_idx: felt, block_height: felt) -> () {
 
     block_height_at_game_activation.write(game_idx, block_height);
@@ -112,7 +207,65 @@ func game_idx_to_status_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ra
     }
 
 
+@external
+func health_per_player_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    player_address: felt, health_value: felt) -> () {
+    
+    health_per_player.write(player_address, health_value);
+    return ();
+    }
 
+@external
+func movement_per_player_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    player_address: felt, movement_value: felt) -> () {
+    
+    movement_per_player.write(player_address, movement_value);
+    return ();
+    }
+
+@external
+func action_per_players_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    player_address: felt, action_value: felt) -> () {
+    
+    action_per_players.write(player_address, action_value);
+    return ();
+    }
+
+@external
+func player_turn_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    player_address: felt) -> () {
+    
+    player_turn.write(player_address);
+    return ();
+    }
+
+@external
+func x_position_per_player_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    player_address: felt, x: felt) -> () {
+    
+    x_position_per_player.write(player_address, x);
+    return ();
+    }
+
+@external
+func y_position_per_player_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    player_address: felt, y: felt) -> () {
+    
+    y_position_per_player.write(player_address, y);
+    return ();
+    }
+
+@external
+func player_address_per_coordinates_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    x: felt, y: felt, player_address: felt) -> () {
+    
+    player_address_per_coordinates.write(x, y, player_address);
+    return ();
+    }
+
+
+
+// Functions
 @constructor
 func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     ) {
@@ -196,4 +349,26 @@ func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 
     return();
 
+}
+
+
+
+
+
+
+
+
+// Attacks
+@external
+func bow{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    player_address: felt, x_dest: felt, y_dest: felt) -> (
+) {
+    return();
+}
+
+@external
+func punch{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    player_address: felt, x_dest: felt, y_dest: felt
+) {
+    return();
 }

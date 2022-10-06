@@ -274,6 +274,7 @@ func dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ran
     // Dispatch to game
     IGameContract.activate_game(
     game_contract_address,
+    game_idx = idle_game_idx,
     arr_player_addresses_len = PLAYERS_PER_GAME,
     arr_player_addresses = arr_player_addresses
     );

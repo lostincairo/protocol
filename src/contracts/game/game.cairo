@@ -1,7 +1,7 @@
 %lang starknet
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.cairo.common.math import (assert_lt, assert_le, assert_nn, assert_not_equal, assert_nn_le, sqrt)
+from starkware.cairo.common.math import (assert_lt, assert_le, assert_nn, assert_not_equal, assert_nn_le, assert_not_zero, sqrt)
 from starkware.cairo.common.math_cmp import (is_le, is_nn_le, is_not_zero)
 from starkware.cairo.common.alloc import alloc
 from starkware.starknet.common.syscalls import (get_block_number, get_caller_address)
@@ -15,6 +15,9 @@ from src.contracts.game.grid import (
 
 from src.contracts.design.constants import (
     PLAYERS_PER_GAME,
+    MAX_HEALTH,
+    MAX_MOVEMENT_PER_TURN,
+    MAX_ACTION_PER_TURN,
 )
 
 
@@ -35,6 +38,8 @@ func game_idx_to_status(game_idx: felt) -> (game_status: felt) {
 @storage_var
 func block_height_at_game_activation(game_idx: felt) -> (block_height: felt) {
 }
+
+
 
 
 
@@ -74,6 +79,7 @@ func player_address_per_coordinates(x: felt, y: felt) -> (player_address: felt) 
 
 
 
+
 // Events 
 
 // Will be picked up by the indexer
@@ -82,10 +88,16 @@ func InitGameOccured(game_idx_counter: felt){
 }
 
 @event
-func ActivateGameOccured(game_idx_counter: felt, block_height_at_game_activation: felt) {
+func ActivateGameOccured(game_idx_counter: felt, block_height_at_game_activation: felt, arr_player_addresses_len: felt, arr_player_addresses: felt*, player_turn: felt) {
 }
 
+@event
+func InitialPositionSetOccured(player_address: felt, x: felt, y: felt) {
+}
 
+@event
+func InitPlayerOccured(game_idx: felt, player_address: felt) {
+}
 
 
 
@@ -160,7 +172,7 @@ func x_position_per_player_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*
     player_address: felt) -> (x: felt) {
 
     let (x) = x_position_per_player.read(player_address);
-    return(x);
+    return(x,);
 }
 
 @view
@@ -168,15 +180,15 @@ func y_position_per_player_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*
    player_address: felt) -> (y: felt) {
 
     let  (y) = y_position_per_player.read(player_address);
-    return(y);
+    return(y,);
 }
 
 @view
 func player_address_per_coordinates_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-   player_address: felt) -> (y: felt) {
+   x: felt, y:felt) -> (player_address: felt) {
 
     let  (player_address) = player_address_per_coordinates.read(x,y);
-    return(player_address);
+    return(player_address,);
 }
 
 
@@ -191,7 +203,7 @@ func lobby_address_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     return ();
 }
 
-func  player_address_at_game_activation_write{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+func  block_height_at_game_activation_write{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     game_idx: felt, block_height: felt) -> () {
 
     block_height_at_game_activation.write(game_idx, block_height);
@@ -224,10 +236,10 @@ func movement_per_player_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, r
     }
 
 @external
-func action_per_players_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+func action_per_player_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     player_address: felt, action_value: felt) -> () {
     
-    action_per_players.write(player_address, action_value);
+    action_per_player.write(player_address, action_value);
     return ();
     }
 
@@ -324,10 +336,28 @@ func init_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return (new_game_idx,);
 }
 
+// TODO: Manage same positionning, revert if it is the case
+@external
+func set_initial_player_position{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    x: felt, y: felt
+) {
+    let (player_address) = get_caller_address();
+    let (x_position) = x_position_per_player_read(player_address);
+    let (y_position) = y_position_per_player_read(player_address);
+    assert_not_zero(x_position);
+    assert_not_zero(y_position);
+
+    x_position_per_player_write(player_address, x); 
+    y_position_per_player_write(player_address, y);
+
+    InitialPositionSetOccured.emit(player_address, x, y);
+    
+    return();
+}
 
 @external
 func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
-     arr_player_addresses_len: felt, arr_player_addresses: felt*) -> () {
+     game_idx: felt ,arr_player_addresses_len: felt, arr_player_addresses: felt*) -> () {
     alloc_locals;
     // Assert that lobby is calling the function
     // assert_caller_is_lobby();
@@ -335,25 +365,61 @@ func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     // Assert that 2 players are dispatched to the game
     assert arr_player_addresses_len = PLAYERS_PER_GAME;
 
+    // Assert that both players have chosen their starting position
+    with_attr error_message("Game activation failed, all players must set their inital position") {
+    let (a_initial) = x_position_per_player_read(arr_player_addresses[0]);
+    let (b_initial) = y_position_per_player_read(arr_player_addresses[1]);
+ 
+    assert_not_zero(a_initial);
+    assert_not_zero(b_initial);
+    }
+
     // TODO: Give players health, movement and attacks
+    init_player(arr_player_addresses[0], game_idx);
+    init_player(arr_player_addresses[1], game_idx);
 
-    // let (player1) = arr_player_addresses[0];
-    // let (player2) = arr_player_addresses[1];
+
+    // set turn to player at idx 0
+    let player_turn = arr_player_addresses[0];
+    player_turn_write(arr_player_addresses[0]);
+    
+
     // Record L2 block at activation
-
     let (block) = get_block_number();
-    block_height_at_game_activation_write(1, block);
+    block_height_at_game_activation_write(game_idx, block);
+
 
     // Event emission
-    ActivateGameOccured.emit(1, block);
+    ActivateGameOccured.emit(game_idx, block, arr_player_addresses_len, arr_player_addresses, player_turn);
+    InitPlayerOccured.emit(game_idx, arr_player_addresses[0]);
+    InitPlayerOccured.emit(game_idx, arr_player_addresses[1]);
 
     return();
 
 }
 
 
+@external
+func init_player{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    player_address: felt, game_idx: felt) ->() {
+    
+    health_per_player_write(player_address, MAX_HEALTH);
+    movement_per_player_write(player_address, MAX_MOVEMENT_PER_TURN);
+    action_per_player_write(player_address, MAX_ACTION_PER_TURN);
+    
+
+    InitPlayerOccured.emit(game_idx, player_address);
+    return();
+}
 
 
+@external
+func end_round{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    arguments
+) {
+
+    return();
+}
 
 
 
@@ -363,6 +429,10 @@ func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 func bow{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     player_address: felt, x_dest: felt, y_dest: felt) -> (
 ) {
+
+    with_attr error_message ("Attack failed, try aiming at a player") {
+    
+    }
     return();
 }
 

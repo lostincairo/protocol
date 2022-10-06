@@ -131,11 +131,21 @@ func MoveOccured(caller: felt, block_height: felt, move_points_remaining: felt, 
 }
 
 @event
-func EndRoundOccured(game_idx: felt, current_turn: felt, next_turn: felt, block_height: felt, opponent_health: felt, game_duration: felt, ) {
+func EndRoundOccured(game_idx: felt, current_turn: felt, next_turn: felt, block_height: felt, opponent_health: felt, game_duration: felt ) {
 }
 
 @event
 func EndGameOccured(game_idx: felt, winner: felt, loser: felt, end_type: felt, block_height_at_game_activation: felt, block_height_at_game_end_read: felt) {
+}
+
+// Cartridge Event emission
+@event
+func quest_progress(
+id: felt,
+player: felt,
+metadataURI_len: felt,
+metadataURI: felt*
+) -> () {
 }
 
 
@@ -391,6 +401,7 @@ func init_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 }
 
 // TODO: Manage concurrent positionning, revert if it is the case
+// TODO: set game_idx
 @external
 func set_initial_player_position{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     x: felt, y: felt

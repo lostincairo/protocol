@@ -41,7 +41,7 @@ func GameActivationOccured (
 
 @contract_interface
 namespace IGameContract {
-    func activate_game(arr_player_addresses_len: felt, arr_player_addresses: felt*) -> () {
+    func activate_game(game_idx : felt, arr_player_addresses_len: felt, arr_player_addresses: felt*) -> () {
     }
 
     func game_idx_to_status_read(game_idx: felt) -> (game_status: felt) {

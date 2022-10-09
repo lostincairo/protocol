@@ -1,0 +1,23 @@
+{
+    "title": "string",
+    "description": "string",
+    "completion": {
+        "all": [
+          {
+            "id": "number",
+            "count": "number"
+          }
+        ],
+        "any": [
+          {
+            "id": "number",
+            "count": "number"
+          },
+          {
+            "id": "number",
+            "count": "number"
+          }
+        ]
+      },
+    "imageURI": "string"
+}

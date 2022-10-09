@@ -1,0 +1,13 @@
+{
+  "title": "Fall 7, Rise 8",
+  "description": "Lose 7 rounds in the Arena",
+    "completion": {
+        "all": [
+          {
+            "id": 3,
+            "count": 7
+          }
+        ]
+      },
+    "imageURI": "string"
+}

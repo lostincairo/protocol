@@ -1,0 +1,13 @@
+{
+    "title": "Getting good",
+    "description": "Win 10 rounds in the Arena",
+    "completion": {
+        "all": [
+          {
+            "id": 2,
+            "count": 10
+          }
+        ]
+      },
+    "imageURI": "string"
+}

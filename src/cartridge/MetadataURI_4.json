@@ -1,0 +1,13 @@
+{
+    "title": "Practice makes perfect",
+    "description": "Complete 10 rounds in the Arena",
+    "completion": {
+        "all": [
+          {
+            "id": 1,
+            "count": 10
+          }
+        ]
+      },
+    "imageURI": "string"
+}

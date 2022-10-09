@@ -406,14 +406,19 @@ func player_address_per_coordinates_write{syscall_ptr: felt*, pedersen_ptr: Hash
 
 // Yagi automation
 // TODO: Implement
-@view
-func probe_can_end_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-) -> (bool: felt) {
+// @view
+// func probe_can_end_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+// ) -> (bool: felt) {
 
-let bool = 1;
-return(bool,);    
+//     let (block_height) = get_block_number();
+//     let game_init = 
+//     let game_duration =
+//     if (is_le(block_height
 
-}
+// let bool = 1;
+// return(bool,);    
+
+// }
 
 @view
 func probe_can_init_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
@@ -536,11 +541,14 @@ func init_player{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let (y_position) = y_position_per_player_read(game_idx, player_address);
     player_address_per_coordinates_write(player_address, x_position, y_position);
 
+    player_address_to_game_idx_write(player_address, game_idx);
+
     InitPlayerOccured.emit(game_idx, player_address);
     return();
 }
 
 // TODO: Manage concurrent positionning, revert if it is the case
+// Implement at a later stage - not needed for demo purposes
 @external
 func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
      game_idx: felt ,arr_player_addresses_len: felt, arr_player_addresses: felt*) -> () {
@@ -561,9 +569,9 @@ func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     assert_not_zero(b_initial);
     }
 
-    //TODO: Assert that the players initial positions are different
+    //Assert that the players initial positions are different - Not needed for demo 
 
-    // TODO: Give players health, movement and attacks
+
     init_player(arr_player_addresses[0], game_idx);
     init_player(arr_player_addresses[1], game_idx);
 
@@ -640,6 +648,7 @@ func end_turn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
 // TODO: Add function so that the player who has the most health point is the winner
 // Right now it is the one calling the function. One could stay idle and win by timeout
+// Not needed for the demo -- To implement along Yagi automation
 func end_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     game_idx: felt, caller: felt, opponent_address: felt, end_type: felt) -> () {
     alloc_locals;
@@ -653,6 +662,9 @@ func end_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     x_position_per_player_write(game_idx, opponent_address, 0);
     y_position_per_player_write(game_idx, opponent_address, 0);
 
+    player_address_to_game_idx_write(caller, 0);
+    player_address_to_game_idx_write(opponent_address, 0);
+
     block_height_at_game_end_write(game_idx, block_height);
 
     // Set game status to "over" -> felt 1870030194
@@ -665,26 +677,30 @@ func end_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return(); 
 }
 
-// TODO: Program this function so it triggers on Exit Game button click
+
 func forfeit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    game_idx: felt,) -> () { 
+    game_idx: felt, opponent_address: felt) -> () { 
+    alloc_locals;
 
     // Assert player is in the game
+    let (caller) = get_caller_address();
+    let (caller_in_game) = player_address_to_game_idx_read(caller);
 
+    with_attr error_message ("You must be in the game to exit") {
+    assert caller_in_game = game_idx;
+    }
 
     // Call end game
+    // forfeit as a felt: 28832984759363956
+    end_game(game_idx, caller, opponent_address, 28832984759363956);
 
-
-    // Emit Event
     return();
 }
 
 
 // Attacks
-// TODO: For prod, Add game_idx check to make sure that they cannot attack players outside of the current game
-// Requires mapping to storage the addresses of the players to the game_idx 
 // TODO: Refactor separate functions into individual units, and create interface to the attack contract where they will be stored
-//TODO: Add VRF from Empiric Network for random health point decrease
+// TODO: Add VRF from Empiric Network for random health point decrease
 @external
 func bow{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     game_idx: felt, opponent_address: felt, x_dest: felt, y_dest: felt) -> (

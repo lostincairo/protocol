@@ -61,7 +61,9 @@ func block_height_at_game_activation(game_idx: felt) -> (block_height: felt) {
 func block_height_at_game_end(game_idx: felt) -> (block_height: felt) {
 }
 
-
+@storage_var
+func player_address_to_game_idx(player_address: felt) -> (game_idx: felt) {
+}
 
 
 
@@ -93,14 +95,20 @@ func x_position_per_player(player_address: felt) -> (x: felt) {
 func y_position_per_player(player_address: felt) -> (y: felt) {
 }
 
-// TODO: Might not be working rn, need to update it with function calls. Check if necessary
-// Does not work at game initiation. Only after the first move it is recorded
-// TODO: record it at player init
 @storage_var
 func player_address_per_coordinates(x: felt, y: felt) -> (player_address: felt) {
 }
 
 
+
+// Temporary, for demo purposes
+// TODO: Replace by permanent and more elegant solution
+@storage_var
+func game_idx_to_first_player(game_idx: felt) -> (first_player_address: felt) {
+}
+@storage_var
+func game_idx_to_second_player(game_idx: felt) -> (second_player_address: felt) {
+}
 
 
 
@@ -203,6 +211,30 @@ func game_idx_to_status_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, r
 }
 
 @view
+func player_address_to_game_idx_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    player_address: felt) -> (game_idx: felt) {
+    let game_idx = player_address_to_game_idx.read(player_address);
+    return(game_idx);
+}
+
+@view
+func game_idx_to_first_player_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    game_idx: felt) -> (first_player_address: felt) {
+    let first_player_address = game_idx_to_first_player.read(game_idx);
+    return(first_player_address);
+}
+
+@view
+func game_idx_to_second_player_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    game_idx: felt) -> (second_player_address: felt) {
+    let second_player_address = game_idx_to_second_player.read(game_idx);
+    return(second_player_address);
+}
+
+
+
+
+@view
 func health_per_player_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     player_address: felt) -> (health_value: felt) {
     let health_value = health_per_player.read(player_address);
@@ -290,6 +322,35 @@ func game_idx_to_status_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, ra
     game_idx_to_status.write(game_idx, game_status);
     return ();
     }
+
+
+
+@external
+func player_address_to_game_idx_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    player_address: felt, game_idx: felt) -> () {
+    
+    health_per_player.write(player_address, game_idx);
+    return ();
+    }
+
+@external
+func game_idx_to_first_player_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    game_idx: felt, first_player_address: felt) -> () {
+    
+    health_per_player.write(game_idx, first_player_address);
+    return ();
+    }
+
+@external
+func game_idx_to_second_player_write{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    game_idx: felt, second_player_address: felt) -> () {
+    
+    health_per_player.write(game_idx, second_player_address);
+    return ();
+    }
+
+
+
 
 
 @external
@@ -449,6 +510,9 @@ func init_player{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     movement_per_player_write(player_address, MAX_MOVEMENT_PER_TURN);
     action_per_player_write(player_address, MAX_ACTION_PER_TURN);
     
+    let (x_position) = x_position_per_player_read(player_address);
+    let (y_position) = y_position_per_player_read(player_address);
+    player_address_per_coordinates_write(player_address, x_position, y_position);
 
     InitPlayerOccured.emit(game_idx, player_address);
     return();
@@ -459,12 +523,13 @@ func init_player{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
 func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
      game_idx: felt ,arr_player_addresses_len: felt, arr_player_addresses: felt*) -> () {
     alloc_locals;
+    
     // Assert that lobby is calling the function
     // assert_caller_is_lobby();
 
     // Assert that 2 players are dispatched to the game
     assert arr_player_addresses_len = PLAYERS_PER_GAME;
-
+    
     // Assert that both players have chosen their starting position
     with_attr error_message("Game activation failed, all players must set their inital position") {
     let (a_initial) = x_position_per_player_read(arr_player_addresses[0]);
@@ -508,6 +573,9 @@ func end_turn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (caller) = get_caller_address();
     let (block_height) = get_block_number();
 
+    let (game_init) = block_height_at_game_activation_read(game_idx);
+    let game_duration = block_height - game_init;
+
     // Assert it's the caller's turn
     with_attr error_message ("This is not your turn") {
         let (player_turn) = player_turn_read();
@@ -526,8 +594,8 @@ func end_turn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     // Check if game duration is elapsed
     // "timeout" to felt: 32767015872591220
-    let (game_init) = block_height_at_game_activation_read(game_idx);
-    let game_duration = block_height - game_init;
+
+
     if(is_le(MAX_GAME_DURATION, game_duration) == 1) {
         EndRoundOccured.emit(game_idx, caller, opponent_address, block_height, opponent_health, game_duration);
         end_game(game_idx, caller, opponent_address, 32767015872591220);
@@ -573,6 +641,19 @@ func end_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     return(); 
 }
 
+// TODO: Program this function so it triggers on Exit Game button click
+func forfeit{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    game_idx: felt,) -> () { 
+
+    // Assert player is in the game
+
+
+    // Call end game
+
+
+    // Emit Event
+    return();
+}
 
 
 // Attacks
@@ -733,6 +814,7 @@ func move{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let (move_remaining) = movement_per_player_read(caller);
 
     with_attr error_message ("Wait for your turn to play") {
+        let (player_turn) = player_turn_read();
         assert caller = player_turn;
     }
 

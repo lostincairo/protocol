@@ -16,6 +16,11 @@ from src.contracts.lobby.lobby_state import (
     lobby_state_functions
 )
 
+
+// Storage vars
+
+
+
 // Events
 
 @event

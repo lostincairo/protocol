@@ -6,6 +6,7 @@ from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.alloc import alloc
 from starkware.starknet.common.syscalls import get_block_number, get_caller_address
 
+//TODO: Expose address_to_queue_index_read
 
 // Storage Vars 
 @storage_var
@@ -35,7 +36,6 @@ func game_address_to_index(address: felt) -> (idx: felt) {
 @storage_var
 func game_contract_address() -> (address: felt) {
 }
-
 
 @storage_var
 func event_counter () -> (val : felt) {
@@ -87,7 +87,7 @@ namespace lobby_state_functions {
         return (address,);
     }
 
-        @view
+    @view
     func game_contract_address_read{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
         ) -> (address: felt) {
         

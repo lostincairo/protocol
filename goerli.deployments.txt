@@ -1,4 +1,0 @@
-0x062c982600ba470aab0c3d8769311e62e127b5f044f6f19d4daf9cf4bbe77e6d:artifacts/abis/lobby_state.json OLD
-0x04d33bc1e9915f3498595abf395ff251e449c30b2ae1bb0851d61c83228df127:artifacts/abis/lobby.json    OLD
-0x00005bcded82699f2def6f47a4bfd3decc9cd7db4d61f1ea38d1225fbfdce743:artifacts/abis/lobby_state.json  OLD
-0x07961d9acae000306cc5100d10e2c9851d9f05c6f03a91c3daea1886590674fc:artifacts/abis/lobby.json:lobby

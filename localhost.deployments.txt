@@ -1,2 +1,0 @@
-0x01978f9ccdb7971edfdc69500e2650cd378372bf332b9f6ff95915a9192be5de:/Users/yoanntlm/.pyenv/versions/3.9.12/lib/python3.9/site-packages/nile/artifacts/abis/Account.json:account-0
-0x020613cdeffc86e8b91a92011b4c0cf2c73dd049bfbbcd11ccc402c62990e673:artifacts/abis/lobby_state.json

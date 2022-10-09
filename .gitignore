@@ -2,6 +2,7 @@
 .temp/
 MatchboxHackathon_Deployments.txt
 signature/
+deployments/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

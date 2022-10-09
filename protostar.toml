@@ -11,5 +11,11 @@ lobby = [
 game = [
     "src/contracts/game/game.cairo",
 ]
+game_init_automation = [
+    "src/contracts/yagi/game_init_automation.cairo",
+]
+lobby_automation = [
+    "src/contracts/yagi/lobby_automation.cairo",
+]
 
 

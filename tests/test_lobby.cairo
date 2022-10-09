@@ -5,6 +5,7 @@ from starkware.cairo.common.math import assert_le, assert_not_zero
 from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.alloc import alloc
 from starkware.starknet.common.syscalls import get_block_number, get_caller_address
+from starkware.cairo.common.hash import hash2
 
 
 from src.contracts.lobby.lobby_state import (
@@ -37,67 +38,36 @@ namespace IGameContract {
 }
 
 
-@external
-func test_anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
-    alloc_locals; 
 
-    %{ stop_prank_callable = start_prank(35) %}
-    let (caller) = get_caller_address();
 
-    anyone_ask_to_queue();
 
-    let(tail_idx) = lobby_state_functions.queue_tail_index_read();
-    assert tail_idx = 1;
+// @external
+// func test_dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
+//     alloc_locals; 
 
-    let (event_count) = lobby_state_functions.event_counter_read();
-    assert event_count = 1;
+//     local contract_address: felt;
+//     %{ ids.contract_address = deploy_contract("./src/contracts/game/game.cairo").contract_address %}
 
-    let (player_idx) = lobby_state_functions.queue_index_to_address_read(tail_idx);
-    assert player_idx = caller; 
 
-    %{ expect_events({"name": "AskToQueueOccured", "data": [0, 35, 1]}) %}
+//     let (new_game_idx) = IGameContract.init_game(contract_address = contract_address);
+//     // Check if can dipatch player to game
 
-    %{ stop_prank_callable() %}
+//     assert new_game_idx = 1;
 
-    // %{ stop_prank_callable = start_prank(124) %}
+//     let (arr_player_addresses: felt*) = alloc();
+//     assert arr_player_addresses [0] = 123;
+//     assert arr_player_addresses [1] = 124;
 
-    // anyone_ask_to_queue();
+//     IGameContract.game_idx_to_status_write(contract_address, 1, 107079782725221);
 
-    // let(tail_idx) = lobby_state_functions.queue_tail_index_read();
-    // assert tail_idx = 2;
+//     IGameContract.activate_game(
+//     contract_address,
+//     arr_player_addresses_len = 2,
+//     arr_player_addresses = arr_player_addresses
+//     );
 
-    // %{ stop_prank_callable() %}
+//     return();
     
-    return ();
-}
-
-@external
-func test_dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() {
-    alloc_locals; 
-
-    local contract_address: felt;
-    %{ ids.contract_address = deploy_contract("./src/contracts/game/game.cairo").contract_address %}
-
-
-    let (new_game_idx) = IGameContract.init_game(contract_address = contract_address);
-    // Check if can dipatch player to game
-
-    assert new_game_idx = 1;
-
-    let (arr_player_addresses: felt*) = alloc();
-    assert arr_player_addresses [0] = 123;
-    assert arr_player_addresses [1] = 124;
-
-    IGameContract.game_idx_to_status_write(contract_address, 1, 107079782725221);
-
-    IGameContract.activate_game(
-    contract_address,
-    arr_player_addresses_len = 2,
-    arr_player_addresses = arr_player_addresses
-    );
-
-    return();
-    
-}
+// }
 
 

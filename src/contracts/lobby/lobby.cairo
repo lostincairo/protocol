@@ -57,6 +57,18 @@ namespace IGameContract {
 }
 
 
+// Probe for Yagi automation
+@view
+func probe_can_dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    ) -> (bool: felt) {
+    
+    let (_, _, _, bool) = can_dispatch_player_to_game();
+    
+    return(bool,);
+
+}
+
+
 
 @constructor
 func constructor {syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr} (){
@@ -175,9 +187,6 @@ func find_idle_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_
     return (b, i);
 
 }
-
-
-
 
 
 @view

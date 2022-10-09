@@ -20,3 +20,4 @@ def uint256(val):
 
 def hex_to_felt(val):
     return int(val, 16)
+

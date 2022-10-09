@@ -6,13 +6,6 @@ from starkware.cairo.common.math_cmp import (is_le, is_nn_le, is_not_zero)
 from starkware.cairo.common.alloc import alloc
 from starkware.starknet.common.syscalls import (get_block_number, get_caller_address)
 
-// from src.contracts.game.grid import (
-//     grid_x_coordinate_for_address_read,
-//     grid_y_coordinate_for_address_read,
-//     grid_address_for_coordinates_read,
-//     grid_address_for_coordinates_write
-// )
-
 from src.contracts.design.constants import (
     MAX_X,
     MAX_Y,
@@ -407,6 +400,27 @@ func player_address_per_coordinates_write{syscall_ptr: felt*, pedersen_ptr: Hash
     player_address_per_coordinates.write(x, y, player_address);
     return ();
     }
+
+
+
+// Yagi automation
+// TODO: Implement
+@view
+func probe_can_end_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+) -> (bool: felt) {
+
+let bool = 
+return(bool);    
+
+}
+
+@view
+func probe_can_init_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    arguments
+) -> (bool: felt) {
+    
+    return();
+}
 
 
 

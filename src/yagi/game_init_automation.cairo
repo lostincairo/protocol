@@ -8,7 +8,7 @@ from src.contracts.design.admin import (assert_correct_passkey)
 
 @contract_interface
 namespace IGameAutomation {
-    func probe_can_init_game() -> (bool: felt, instances: felt){
+    func probe_can_init_game() -> (bool: felt){
     }
     
     func init_game() -> () {
@@ -52,6 +52,11 @@ func executeTask{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     
     let (game_address) = lost_in_cairo_game_contract_address_read();
 
+    // Initialize five games
+    IGameAutomation.init_game(game_address);
+    IGameAutomation.init_game(game_address);
+    IGameAutomation.init_game(game_address);
+    IGameAutomation.init_game(game_address);
     IGameAutomation.init_game(game_address);
 
     return();

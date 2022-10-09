@@ -21,7 +21,8 @@ from src.contracts.design.constants import (
     MAX_RANGE_Y_PUNCH,
     DAMAGE_PUNCH,
     ACTION_PUNCH,
-    MAX_GAME_DURATION
+    MAX_GAME_DURATION,
+    BUFFER,
 )
 
 
@@ -409,8 +410,8 @@ func player_address_per_coordinates_write{syscall_ptr: felt*, pedersen_ptr: Hash
 func probe_can_end_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
 ) -> (bool: felt) {
 
-let bool = 
-return(bool);    
+let bool = 1;
+return(bool,);    
 
 }
 
@@ -418,8 +419,18 @@ return(bool);
 func probe_can_init_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     arguments
 ) -> (bool: felt) {
-    
-    return();
+    alloc_locals;
+
+    let (max_idx) = game_idx_counter_read();
+    let buffer_idx = max_idx - BUFFER;  
+    let (buffer_status) = game_idx_to_status_read(buffer_idx);
+
+    // if game is idle
+    if (buffer_status == 1768189029) {
+        return(0,);
+    }
+
+    return(1,);
 }
 
 
@@ -464,7 +475,7 @@ func assert_caller_is_lobby{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, rang
 // This function should be automated using yagi so that there are at least x idle games available.
 // x depending on the number of games played in the last few blocks or the number of players who have joined the queue. 
 @external
-func init_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (new_game_idx: felt ) {
+func init_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> () {
 
     // Read current game index
     let (game_idx) = game_idx_counter_read();
@@ -480,7 +491,7 @@ func init_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let new_game_idx = game_idx + 1;
 
-    return (new_game_idx,);
+    return();
 }
 
 @external

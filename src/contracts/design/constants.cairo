@@ -19,6 +19,7 @@ const MAX_ACTION_PER_TURN = 2;
 const MAX_HEALTH = 100;
 const MAX_GAME_DURATION = 20;
 
+const BUFFER = 5; 
 
 // Attacks
 

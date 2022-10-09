@@ -672,7 +672,66 @@ func end_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     let (game_activation) = block_height_at_game_activation_read(game_idx);
 
+    // Event Emission
     EndGameOccured.emit(game_idx, caller, opponent_address, end_type, game_activation, block_height);
+    
+
+    // Cartridge
+    // #1
+    let (arr_quest_1) = alloc();
+    assert arr_quest_1[0] = 'data:application/json,{"name":';
+    assert arr_quest_1[1] = '"Apprentice","description":"Co';
+    assert arr_quest_1[2] = 'mplete a round in the Arena"}';
+
+    quest_progress.emit(1, caller, 3, arr_quest_1);
+    quest_progress.emit(1, opponent_address, 3, arr_quest_1);
+
+    // #2
+    let (arr_quest_2) = alloc();
+    assert arr_quest_2[0] = 'data:application/json,{"name":';
+    assert arr_quest_2[1] = '"Winner","description":"Win a ';
+    assert arr_quest_2[2] = 'round in the Arena"}';
+
+    quest_progress.emit(2, caller, 3, arr_quest_2);
+
+    // #3
+    let (arr_quest_3) = alloc();
+    assert arr_quest_3[0] = 'data:application/json,{"name":';
+    assert arr_quest_3[1] = '"Defeated","description":"Lose';
+    assert arr_quest_3[2] = ' a round in the Arena"}';
+
+    quest_progress.emit(3, opponent_address, 3, arr_quest_3);
+
+    // #4
+    let (arr_quest_4) = alloc();
+    assert arr_quest_4[0] = 'data:application/json,{"name":';
+    assert arr_quest_4[1] = '"Practice makes perfect","desc';
+    assert arr_quest_4[2] = 'ription":"Complete 10 rounds in';
+    assert arr_quest_4[3] = ' the Arena", "completion": {"al';
+    assert arr_quest_4[4] = 'l":[{"id":1,"count":10}]}}';
+
+    quest_progress.emit(4, caller, 5, arr_quest_4);
+    quest_progress.emit(4, opponent_address, 5, arr_quest_4);
+
+    // #5
+    let (arr_quest_5) = alloc();
+    assert arr_quest_5[0] = 'data:application/json,{"name":';
+    assert arr_quest_5[1] = '"Getting good","desc';
+    assert arr_quest_5[2] = 'ription":"Win 10 rounds in';
+    assert arr_quest_5[3] = ' the Arena", "completion": {"al';
+    assert arr_quest_5[4] = 'l":[{"id":2,"count":10}]}}';
+
+    quest_progress.emit(5, caller, 5, arr_quest_5);
+
+    // #6
+    let (arr_quest_6) = alloc();
+    assert arr_quest_6[0] = 'data:application/json,{"name":';
+    assert arr_quest_6[1] = '"Fall 7, Rise 8","desc';
+    assert arr_quest_6[2] = 'ription":"Lose 7 rounds in';
+    assert arr_quest_6[3] = ' the Arena", "completion": {"al';
+    assert arr_quest_6[4] = 'l":[{"id":3,"count":7}]}}';
+
+    quest_progress.emit(6, opponent_address, 5, arr_quest_6);
 
     return(); 
 }
@@ -831,9 +890,6 @@ func punch{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 }
 
 
-// TODO: Add collision detection and pathfinding
-// TODO: Right now you cannot place your player on the same line or column.
-// Need to add 'and' statement between the 2 conditions
 @external
 func move{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     game_idx: felt, opponent_address: felt, x_dest: felt, y_dest: felt
@@ -850,6 +906,10 @@ func move{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     let move_x = abs_value(caller_position_x - x_dest);
     let move_y = abs_value(caller_position_y - y_dest);
     let move_dist = move_x + move_y;
+
+    let opponent_dist_x = abs_value(opponent_position_x - x_dest);
+    let opponent_dist_y = abs_value(opponent_position_y - y_dest);
+    let opponent_dist = opponent_dist_x + opponent_dist_y;
 
     let (move_remaining) = movement_per_player_read(caller);
 
@@ -873,14 +933,12 @@ func move{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 
     // Check destination is different from origin
     with_attr error_message ("Destination is same as origin, please try another move") {
-        assert_not_equal(caller_position_x, x_dest);
-        assert_not_equal(caller_position_y, y_dest);   
+        assert_not_zero(move_dist);
     }
 
     // Check if destination is not opponent's position
     with_attr error_message("Destination is the opponent's position, please try another move") {
-        assert_not_equal(opponent_position_x, x_dest);
-        assert_not_equal(opponent_position_y, y_dest);
+        assert_not_zero(opponent_dist);
     }
 
     // Check if caller still has movement points to complete the move

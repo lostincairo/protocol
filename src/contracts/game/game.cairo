@@ -117,7 +117,11 @@ func InitGameOccured(game_idx_counter: felt){
 }
 
 @event
-func ActivateGameOccured(game_idx_counter: felt, block_height_at_game_activation: felt, arr_player_addresses_len: felt, arr_player_addresses: felt*, player_turn: felt) {
+func ActivateGameOccured(game_idx_counter: felt, block_height_at_game_activation: felt, arr_player_addresses_len: felt, arr_player_addresses: felt*) {
+}
+
+@event
+func StartGameOccured(game_idx_counter: felt, player_turn: felt) {
 }
 
 @event
@@ -547,8 +551,7 @@ func init_player{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     return();
 }
 
-// TODO: Manage concurrent positionning, revert if it is the case
-// Implement at a later stage - not needed for demo purposes
+
 @external
 func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
      game_idx: felt ,arr_player_addresses_len: felt, arr_player_addresses: felt*) -> () {
@@ -560,26 +563,8 @@ func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     // Assert that 2 players are dispatched to the game
     assert arr_player_addresses_len = PLAYERS_PER_GAME;
     
-    // Assert that both players have chosen their starting position
-    with_attr error_message("Game activation failed, all players must set their inital position") {
-    let (a_initial) = x_position_per_player_read(game_idx, arr_player_addresses[0]);
-    let (b_initial) = y_position_per_player_read(game_idx, arr_player_addresses[1]);
- 
-    assert_not_zero(a_initial);
-    assert_not_zero(b_initial);
-    }
-
-    //Assert that the players initial positions are different - Not needed for demo 
-
-
     init_player(arr_player_addresses[0], game_idx);
     init_player(arr_player_addresses[1], game_idx);
-
-
-    // set turn to player at idx 0
-    let player_turn = arr_player_addresses[0];
-    player_turn_write(game_idx, arr_player_addresses[0]);
-    
 
     // Record L2 block at activation
     let (block) = get_block_number();
@@ -587,12 +572,76 @@ func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 
 
     // Event emission
-    ActivateGameOccured.emit(game_idx, block, arr_player_addresses_len, arr_player_addresses, player_turn);
+    ActivateGameOccured.emit(game_idx, block, arr_player_addresses_len, arr_player_addresses);
 
     return();
 
 }
 
+
+//TODO: Implement probe
+@external
+func probe_can_start_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> (bool: felt) {
+    
+
+    let (bool) = can_start_game(1); 
+
+
+
+    return(bool,);
+}
+
+// TODO: Manage concurrent positionning, revert if it is the case
+// Implement at a later stage - not needed for demo purposes
+@external
+func can_start_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    game_idx: felt) -> (bool: felt) {
+
+    let (player_a) = game_idx_to_first_player_read(game_idx);
+    let (player_b) = game_idx_to_second_player_read(game_idx);
+
+    let player_turn = player_a;
+    player_turn_write(game_idx, player_a);
+
+    let (a_initial) = x_position_per_player_read(game_idx, player_a);
+    let (b_initial) = y_position_per_player_read(game_idx, player_b);
+
+
+    if(a_initial != 0) {
+        if(b_initial != 0) {
+
+            return(1,);
+        }
+    }
+    //Assert that the players initial positions are different - Not needed for demo 
+    
+    
+
+    return(0,);
+}
+
+// TODO: Manage concurrent positionning, revert if it is the case
+// Implement at a later stage - not needed for demo purposes
+@external
+func start_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
+    game_idx: felt, 
+) {
+    
+    with_attr error_message ("Must wait for all players to set their initial position to start the game") {
+        let (bool) = can_start_game(game_idx);
+        assert bool = 1;
+    }
+
+    let (player_turn) = player_turn_read(game_idx);
+
+    // Change game status : started -> felt: 32497584202605924
+    game_idx_to_status_write(game_idx, 32497584202605924);
+
+    // Event Emission
+    StartGameOccured.emit(game_idx, player_turn);
+
+    return();
+}
 
 
 // TODO: Add Yagi automation to end the turn automatically after a certain block height

@@ -424,10 +424,25 @@ func player_address_per_coordinates_write{syscall_ptr: felt*, pedersen_ptr: Hash
 
 // }
 
+
+
+// Functions
+@constructor
+func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
+    ) {
+    init_game();
+    init_game();
+    init_game();
+    init_game();
+    init_game();
+    init_game();
+
+    return ();
+}
+
+
 @view
-func probe_can_init_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    arguments
-) -> (bool: felt) {
+func probe_can_init_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (bool: felt) {
     alloc_locals;
 
     let (max_idx) = game_idx_counter_read();
@@ -441,18 +456,6 @@ func probe_can_init_game{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range
 
     return(1,);
 }
-
-
-
-// Functions
-@constructor
-func constructor{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
-    ) {
-    
-    return ();
-}
-
-
 
 @external
 func set_lobby_address{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
@@ -593,6 +596,8 @@ func probe_can_start_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 
 // TODO: Manage concurrent positionning, revert if it is the case
 // Implement at a later stage - not needed for demo purposes
+
+// IMPORTANT: Function must be called before starting a game
 @external
 func can_start_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     game_idx: felt) -> (bool: felt) {

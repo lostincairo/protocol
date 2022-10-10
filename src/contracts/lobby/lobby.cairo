@@ -264,7 +264,7 @@ func populate_player_adr_update_queue{syscall_ptr: felt*, pedersen_ptr: HashBuil
     return();
 }
 
-
+// TODO: Fix bug where player at queue idx = 0 is not dispatched in the game. 
 @external
 func dispatch_player_to_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}() -> () {
     alloc_locals;

@@ -565,9 +565,10 @@ func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 
     // Assert that 2 players are dispatched to the game
     assert arr_player_addresses_len = PLAYERS_PER_GAME;
-    
-    init_player(game_idx, arr_player_addresses[0]);
-    init_player(game_idx, arr_player_addresses[1]);
+
+     game_idx_to_first_player_write(game_idx, arr_player_addresses[0]);
+     game_idx_to_second_player_write(game_idx, arr_player_addresses[1]);
+
 
     // Record L2 block at activation
     let (block) = get_block_number();
@@ -637,6 +638,12 @@ func start_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}
         assert bool = 1;
     }
 
+    let (player_a) = game_idx_to_first_player_read(game_idx);
+    let (player_b) = game_idx_to_second_player_read(game_idx);
+
+    init_player(game_idx, player_a);
+    init_player(game_idx, player_b);
+
     let (player_turn) = player_turn_read(game_idx);
 
     // Change game status : started -> felt: 32497584202605924
@@ -703,6 +710,7 @@ func end_turn{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
 // TODO: Add function so that the player who has the most health point is the winner
 // Right now it is the one calling the function. One could stay idle and win by timeout
 // Not needed for the demo -- To implement along Yagi automation
+@external
 func end_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     game_idx: felt, caller: felt, opponent_address: felt, end_type: felt) -> () {
     alloc_locals;

@@ -18,7 +18,26 @@ from src.contracts.lobby.lobby_state import (
 
 
 // Storage vars
+@storage_var
+func address_to_queue_index (address : felt) -> (idx : felt) {
+}
 
+@view
+func address_to_queue_index_read{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(address: felt) -> (idx: felt) {
+    let (idx) = address_to_queue_index.read(address);
+
+    return (idx,);
+}
+
+func address_to_queue_index_write{
+    syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
+}(address: felt, idx: felt) -> () {
+    address_to_queue_index.write(address, idx);
+
+    return ();
+}
 
 
 // Events
@@ -101,7 +120,7 @@ func anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     //
     // Revert if caller index-in-queue is not zero, indicating the caller is already in the queue
     //
-    let (caller_idx_in_queue) = lobby_state_functions.address_to_queue_index_read(caller);
+    let (caller_idx_in_queue) = address_to_queue_index_read(caller);
     with_attr error_message("caller index in queue != 0 => caller already in queue.") {
         assert caller_idx_in_queue = 0;
     }
@@ -111,7 +130,7 @@ func anyone_ask_to_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_c
     //
     let (curr_tail_idx) = lobby_state_functions.queue_tail_index_read();
     lobby_state_functions.queue_tail_index_write(curr_tail_idx + 1);
-    lobby_state_functions.address_to_queue_index_write(caller, curr_tail_idx + 1);
+    address_to_queue_index_write(caller, curr_tail_idx + 1);
     lobby_state_functions.queue_index_to_address_write(curr_tail_idx + 1, caller);
 
     //
@@ -146,7 +165,7 @@ func reset_queue{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     // reset the storage vars
     let (player_address) = lobby_state_functions.queue_index_to_address_read(idx);
     lobby_state_functions.queue_index_to_address_write(idx, 0);
-    lobby_state_functions.address_to_queue_index_write(player_address, 0);
+    address_to_queue_index_write(player_address, 0);
 
     // recursion
     reset_queue(idx + 1);
@@ -232,7 +251,7 @@ func populate_player_adr_update_queue{syscall_ptr: felt*, pedersen_ptr: HashBuil
     assert arr_player_addresses [offset] = player_address;
 
     // Clear queue storage at idx
-    lobby_state_functions.address_to_queue_index_write(player_address, 0);
+    address_to_queue_index_write(player_address, 0);
     lobby_state_functions.queue_index_to_address_write(curr_head_idx + offset + 1, 0);
 
     // Recursion

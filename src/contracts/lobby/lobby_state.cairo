@@ -17,9 +17,6 @@ func queue_head_index () -> (head_idx : felt) {
 func queue_tail_index () -> (tail_idx : felt) {
 }
 
-@storage_var
-func address_to_queue_index (address : felt) -> (idx : felt) {
-}
 
 @storage_var
 func queue_index_to_address (idx : felt) -> (address : felt) {
@@ -62,14 +59,7 @@ namespace lobby_state_functions {
         return (tail_idx,);
     }
 
-    @view
-    func address_to_queue_index_read{
-        syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-    }(address: felt) -> (idx: felt) {
-        let (idx) = address_to_queue_index.read(address);
 
-        return (idx,);
-    }
 
     @view
     func queue_index_to_address_read{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr} (
@@ -130,13 +120,6 @@ namespace lobby_state_functions {
         return ();
     }
 
-    func address_to_queue_index_write{
-        syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
-    }(address: felt, idx: felt) -> () {
-        address_to_queue_index.write(address, idx);
-
-        return ();
-    }
 
     func game_contract_address_write{
         syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr

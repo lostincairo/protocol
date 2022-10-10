@@ -566,8 +566,8 @@ func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
     // Assert that 2 players are dispatched to the game
     assert arr_player_addresses_len = PLAYERS_PER_GAME;
     
-    init_player(arr_player_addresses[0], game_idx);
-    init_player(arr_player_addresses[1], game_idx);
+    init_player(game_idx, arr_player_addresses[0]);
+    init_player(game_idx, arr_player_addresses[1]);
 
     // Record L2 block at activation
     let (block) = get_block_number();
@@ -598,7 +598,7 @@ func probe_can_start_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_
 // Implement at a later stage - not needed for demo purposes
 
 // IMPORTANT: Function must be called before starting a game
-@external
+@view
 func can_start_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr}(
     game_idx: felt) -> (bool: felt) {
 

@@ -548,7 +548,6 @@ func init_player{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_ptr
     let (y_position) = y_position_per_player_read(game_idx, player_address);
     player_address_per_coordinates_write(player_address, x_position, y_position);
 
-    player_address_to_game_idx_write(player_address, game_idx);
 
     InitPlayerOccured.emit(game_idx, player_address);
     return();
@@ -568,6 +567,10 @@ func activate_game{syscall_ptr: felt*, pedersen_ptr: HashBuiltin*, range_check_p
 
      game_idx_to_first_player_write(game_idx, arr_player_addresses[0]);
      game_idx_to_second_player_write(game_idx, arr_player_addresses[1]);
+
+    player_address_to_game_idx_write(arr_player_addresses[0], game_idx);
+    player_address_to_game_idx_write(arr_player_addresses[1], game_idx);
+
 
 
     // Record L2 block at activation
